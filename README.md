@@ -1,7 +1,6 @@
 # Go App
 
 Go App is an app written in Go.
-This repository is used as a template.
 
 ## Contributing
 
