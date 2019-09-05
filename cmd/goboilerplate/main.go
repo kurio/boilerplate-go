@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"os"
@@ -18,7 +18,12 @@ var rootCmd = &cobra.Command{
 	Short: "Short description.",
 }
 
-func init() {
+func initApp() {
+	// TODO: configurable through env
+	httpProcessTimeout = 2 * time.Second
+}
+
+func main() {
 	levelStr := strings.ToLower(os.Getenv("LOG_LEVEL"))
 	if levelStr == "" {
 		levelStr = "info"
@@ -31,17 +36,9 @@ func init() {
 	setupLogs(level)
 
 	cobra.OnInitialize(initApp)
-}
 
-// Execute the main function.
-func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
-}
-
-func initApp() {
-	// TODO: configurable through env
-	httpProcessTimeout = 2 * time.Second
 }

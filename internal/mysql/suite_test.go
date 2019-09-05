@@ -27,7 +27,7 @@ func (m *mysqlSuite) SetupSuite() {
 	db, err := sql.Open("mysql", dsnDB)
 	require.NoError(m.T(), err)
 	require.NotNil(m.T(), db)
-	m.mg, err = MigrateDB(db)
+	m.mg, err = migrateDB(db)
 	require.NoError(m.T(), err)
 	m.DB = db
 }

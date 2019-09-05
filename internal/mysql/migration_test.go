@@ -9,7 +9,7 @@ import (
 	_ "github.com/golang-migrate/migrate/source/file"
 )
 
-func MigrateDB(db *sql.DB) (m *migrate.Migrate, err error) {
+func migrateDB(db *sql.DB) (m *migrate.Migrate, err error) {
 	driver, err := mysql.WithInstance(db, &mysql.Config{})
 	if err != nil {
 		return nil, err
