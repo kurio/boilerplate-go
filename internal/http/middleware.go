@@ -116,10 +116,11 @@ func getMetricName(pathURL string) string {
 	pathLower := strings.ToLower(pathURL)
 
 	m := map[*regexp.Regexp]string{
-		regexp.MustCompile(`^get /something$`):             "fetch_something",
-		regexp.MustCompile(`^get /something/([\w-])+$`):    "get_something",
-		regexp.MustCompile(`^post /something$`):            "create_something",
-		regexp.MustCompile(`^delete /something/([\w-])+$`): "delete_something",
+		// TODO: mapping of endpoints to metric name.
+		// regexp.MustCompile(`^get /something$`):             "fetch_something",
+		// regexp.MustCompile(`^get /something/([\w-])+$`):    "get_something",
+		// regexp.MustCompile(`^post /something$`):            "create_something",
+		// regexp.MustCompile(`^delete /something/([\w-])+$`): "delete_something",
 	}
 
 	for re, metricName := range m {
