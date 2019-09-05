@@ -14,7 +14,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "boilerplate-go",
+	Use:   "goboilerplate",
 	Short: "Short description.",
 }
 

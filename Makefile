@@ -1,7 +1,7 @@
 SOURCES := $(shell find . -name '*.go' -type f -not -path './vendor/*'  -not -path '*/mocks/*')
 TEST_OPTS := -covermode=atomic $(TEST_OPTS)
 
-IMAGE_NAME = boilerplate
+IMAGE_NAME = goboilerplate
 
 # Database
 MYSQL_ADDRESS ?= localhost:3306
@@ -51,7 +51,7 @@ uninstall:
 	@GO111MODULE=on go clean -i ./...
 
 boilerplate: vendor $(SOURCES)
-	GO111MODULE=on go build -o boilerplate github.com/kurio/boilerplate-go/app
+	GO111MODULE=on go build -o goboilerplate github.com/kurio/boilerplate-go/app
 
 
 # Database Migration
@@ -82,7 +82,7 @@ mysql-up:
 
 .PHONY: mysql-down
 mysql-down:
-	@docker stop boilerplate_mysql
+	@docker stop goboilerplate_mysql
 
 .PHONY: mongo-up
 mongo-up:
@@ -90,7 +90,7 @@ mongo-up:
 
 .PHONY: mongo-down
 mongo-down:
-	@docker stop boilerplate_mongo
+	@docker stop goboilerplate_mongo
 
 .PHONY: docker
 docker: vendor $(SOURCES)

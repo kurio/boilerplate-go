@@ -37,7 +37,7 @@ func ResponseTimeMiddleware(statsdClient *statsd.Client) echo.MiddlewareFunc {
 			responseTime := time.Since(startTime)
 
 			tags := []string{
-				"service:boilerplate-go",
+				"service:goboilerplate",
 				fmt.Sprintf("operation:%s", metricName),
 			}
 
