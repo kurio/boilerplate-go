@@ -4,21 +4,62 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
+	"time"
 
-	goboilerplate "github.com/kurio/boilerplate-go"
-
+	"github.com/DataDog/datadog-go/statsd"
 	"github.com/labstack/echo"
 	"github.com/pkg/errors"
-
 	log "github.com/sirupsen/logrus"
+
+	goboilerplate "github.com/kurio/boilerplate-go"
 )
+
+// ResponseTimeMiddleware is used to send response_time metrics to statsd.
+func ResponseTimeMiddleware(statsdClient *statsd.Client) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			startTime := time.Now()
+
+			err := next(c)
+			if err != nil {
+				return err
+			}
+
+			path := c.Request().URL.Path
+
+			metricName := getMetricName(c.Request().Method + " " + path)
+			if metricName == "" {
+				return nil
+			}
+
+			responseTime := time.Since(startTime)
+
+			tags := []string{
+				"service:boilerplate-go",
+				fmt.Sprintf("operation:%s", metricName),
+			}
+
+			if err := statsdClient.Gauge("http.request.duration.seconds", responseTime.Seconds(), tags, float64(1.0)); err != nil {
+				log.Warningf("error statsdClient.Gauge: %+v", err)
+			}
+
+			if err := statsdClient.Incr("http.request.total", tags, float64(1)); err != nil {
+				log.Warningf("error statsdClient.Incr: %+v", err)
+			}
+
+			return nil
+		}
+	}
+}
 
 type stackTracer interface {
 	StackTrace() errors.StackTrace
 }
 
-func errorMiddleware() echo.MiddlewareFunc {
+// ErrorMiddleware is a function to generate http status code.
+func ErrorMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			err := next(c)
@@ -30,7 +71,6 @@ func errorMiddleware() echo.MiddlewareFunc {
 			for k, v := range c.Request().Header {
 				headers = append(headers, fmt.Sprintf(`%s:%s`, k, strings.Join(v, ",")))
 			}
-
 			lg := log.WithFields(log.Fields{
 				"headers": strings.Join(headers, " | "),
 				"method":  c.Request().Method,
@@ -42,17 +82,20 @@ func errorMiddleware() echo.MiddlewareFunc {
 				return echo.NewHTTPError(e.Code, e.Message)
 			}
 
-			var msg string
+			msg := err.Error()
 
 			newErr, ok := err.(stackTracer)
 			if ok {
 				st := newErr.StackTrace()
 				msg = fmt.Sprintf("%s\n%+v", err.Error(), st[0:3])
-			} else {
-				msg = err.Error()
 			}
 
 			err = errors.Cause(err)
+
+			if _, ok := err.(goboilerplate.ConstraintError); ok {
+				lg.Errorln(msg)
+				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+			}
 
 			switch err {
 			case context.DeadlineExceeded, context.Canceled:
@@ -67,4 +110,22 @@ func errorMiddleware() echo.MiddlewareFunc {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 	}
+}
+
+func getMetricName(pathURL string) string {
+	pathLower := strings.ToLower(pathURL)
+
+	m := map[*regexp.Regexp]string{
+		regexp.MustCompile(`^get /something$`):             "fetch_something",
+		regexp.MustCompile(`^get /something/([\w-])+$`):    "get_something",
+		regexp.MustCompile(`^post /something$`):            "create_something",
+		regexp.MustCompile(`^delete /something/([\w-])+$`): "delete_something",
+	}
+
+	for re, metricName := range m {
+		if re.MatchString(pathLower) {
+			return metricName
+		}
+	}
+	return ""
 }
