@@ -1,0 +1,47 @@
+version: '2.3'
+
+networks: 
+  backend:
+    driver: bridge
+
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: goboilerplate_mysql
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_DATABASE=myDB
+      - MYSQL_USER=kurio
+      - MYSQL_PASSWORD=supersecret
+      - MYSQL_ROOT_PASSWORD=root-pass
+    networks: 
+      - backend
+
+  mongo:
+    image: mvertes/alpine-mongo:4.2
+    container_name: goboilerplate_mongo
+    ports:
+      - 27017:27017
+    networks:
+      - backend
+
+  statsd:
+    image: prom/statsd-exporter
+    container_name: statsd
+    ports:
+      - 9102:9102
+
+  api:
+    image: goboilerplate
+    container_name: goboilerplate_api
+    ports:
+      - 7723:7723
+    env_file:
+      - .env
+    links:
+      - mysql
+      - mongo
+      - statsd
+    networks: 
+      - backend
