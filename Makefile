@@ -2,6 +2,7 @@ SOURCES := $(shell find . -name '*.go' -type f -not -path './vendor/*'  -not -pa
 TEST_OPTS := -covermode=atomic $(TEST_OPTS)
 
 IMAGE_NAME = goboilerplate
+BINARY_NAME = goboilerplate
 
 # Database
 MYSQL_ADDRESS ?= localhost:3306
@@ -9,6 +10,11 @@ MYSQL_USER ?= kurio
 MYSQL_PASSWORD ?= supersecret
 MYSQL_DATABASE ?= myDB
 MONGO_URI ?= mongodb://localhost:27017
+
+.PHONY: goboilerplate
+goboilerplate: vendor $(SOURCES)
+	@echo "Building binary"
+	@GO111MODULE=on go build -o $(BINARY_NAME) github.com/kurio/boilerplate-go/cmd/goboilerplate
 
 # Dependencies Management
 
@@ -49,10 +55,6 @@ install: vendor
 uninstall:
 	@echo "Removing binaries and libraries"
 	@GO111MODULE=on go clean -i ./...
-
-boilerplate: vendor $(SOURCES)
-	GO111MODULE=on go build -o goboilerplate github.com/kurio/boilerplate-go/app
-
 
 # Database Migration
 .PHONY: migrate-prepare
