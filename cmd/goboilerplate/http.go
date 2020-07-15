@@ -24,6 +24,13 @@ var httpCmd = &cobra.Command{
 		e := echo.New()
 
 		/******
+		Prometheus
+		******/
+		// TODO: change serviceName
+		p := handler.NewPrometheus("goboilerplate", handler.URLSkipper)
+		p.Use(e)
+
+		/******
 		Statsd
 		******/
 		statsdURL := os.Getenv("STATSD_URL")
