@@ -3,11 +3,12 @@ package main
 import (
 	"net/http"
 	"os"
+
 	// for profiling purpose
 	_ "net/http/pprof"
 
 	"github.com/DataDog/datadog-go/statsd"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
