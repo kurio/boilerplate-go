@@ -28,7 +28,7 @@ var httpCmd = &cobra.Command{
 		******/
 		promAddress := os.Getenv("PROMETHEUS_ADDRESS")
 		// TODO: change serviceName
-		p := handler.NewPrometheus("catalina", handler.URLSkipper)
+		p := handler.NewPrometheus("goboilerplate", handler.URLSkipper)
 		if promAddress != "" {
 			p.SetListenAddress(promAddress)
 		}
