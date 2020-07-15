@@ -71,7 +71,6 @@ var defaultMetrics = []*echoProm.Metric{
 type Prometheus struct {
 	reqCnt, reqDur, reqSz, resSz *prometheus.CounterVec
 	reqDurHis, resSzHis          *prometheus.HistogramVec
-	router                       *echo.Echo
 	listenAddress                string
 
 	MetricsList []*echoProm.Metric
@@ -138,6 +137,12 @@ func URLSkipper(c echo.Context) bool {
 	return strings.HasPrefix(c.Path(), "/ping")
 }
 
+// SetListenAddress for exposing metrics on address. If not set, it will be exposed at the
+// same address of the echo engine that is being used
+func (p *Prometheus) SetListenAddress(address string) {
+	p.listenAddress = address
+}
+
 // NewPrometheus generates a new set of metrics with a certain service name
 func NewPrometheus(serviceName string, skipper middleware.Skipper) *Prometheus {
 	if skipper == nil {
@@ -187,12 +192,14 @@ func (p *Prometheus) registerMetrics() {
 func (p *Prometheus) Use(e *echo.Echo) {
 	e.Use(p.HandlerFunc)
 	if p.listenAddress != "" {
-		p.router.GET(p.MetricsPath, prometheusHandler())
-
-		errCh := make(chan error)
-		go func(ch chan error) {
-			errCh <- p.router.Start(p.listenAddress)
-		}(errCh)
+		promEcho := echo.New()
+		promEcho.GET(p.MetricsPath, prometheusHandler())
+		go func() {
+			if err := promEcho.Start(p.listenAddress); err != nil {
+				log.Error("Cannot start prometheus server with error: ", err)
+			}
+			log.Infof("Start Prometheus on: %v", p.listenAddress)
+		}()
 	} else {
 		e.GET(p.MetricsPath, prometheusHandler())
 	}
