@@ -58,6 +58,13 @@ var reqSz = &echoProm.Metric{
 	Type:        "counter_vec",
 	Args:        []string{"service", "code", "method", "url"}}
 
+var reqSzHis = &echoProm.Metric{
+	ID:          "reqSzHis",
+	Name:        "request_size_histogram_bytes",
+	Description: "The Histogram for HTTP request sizes in bytes.",
+	Type:        "histogram_size_vec",
+	Args:        []string{"service", "method"}}
+
 var defaultMetrics = []*echoProm.Metric{
 	reqCnt,
 	reqDurHis,
@@ -65,13 +72,14 @@ var defaultMetrics = []*echoProm.Metric{
 	resSz,
 	resSzHis,
 	reqSz,
+	reqSzHis,
 }
 
 // Prometheus contains the metrics gathered by the instance and its path
 type Prometheus struct {
-	reqCnt, reqDur, reqSz, resSz *prometheus.CounterVec
-	reqDurHis, resSzHis          *prometheus.HistogramVec
-	listenAddress                string
+	reqCnt, reqDur, reqSz, resSz  *prometheus.CounterVec
+	reqDurHis, resSzHis, reqSzHis *prometheus.HistogramVec
+	listenAddress                 string
 
 	MetricsList []*echoProm.Metric
 	MetricsPath string
@@ -183,6 +191,8 @@ func (p *Prometheus) registerMetrics() {
 			p.reqDurHis = metric.(*prometheus.HistogramVec)
 		case resSzHis:
 			p.resSzHis = metric.(*prometheus.HistogramVec)
+		case reqSzHis:
+			p.reqSzHis = metric.(*prometheus.HistogramVec)
 		}
 		metricDef.MetricCollector = metric
 	}
@@ -239,6 +249,7 @@ func (p *Prometheus) HandlerFunc(next echo.HandlerFunc) echo.HandlerFunc {
 
 		p.reqDurHis.WithLabelValues(p.ServiceName, method).Observe(elapsed)
 		p.resSzHis.WithLabelValues(p.ServiceName, method).Observe(resSz)
+		p.reqSzHis.WithLabelValues(p.ServiceName, method).Observe(reqSz)
 		p.reqDur.WithLabelValues(p.ServiceName, status, method, url).Add(elapsed)
 		p.reqCnt.WithLabelValues(p.ServiceName, status, method, url).Inc()
 		p.reqSz.WithLabelValues(p.ServiceName, status, method, url).Add(reqSz)
