@@ -3,11 +3,12 @@ package main
 import (
 	"net/http"
 	"os"
+
 	// for profiling purpose
 	_ "net/http/pprof"
 
 	"github.com/DataDog/datadog-go/statsd"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -21,6 +22,17 @@ var httpCmd = &cobra.Command{
 	Short: "Start the HTTP server.",
 	Run: func(cmd *cobra.Command, args []string) {
 		e := echo.New()
+
+		/******
+		Prometheus
+		******/
+		promAddress := os.Getenv("PROMETHEUS_ADDRESS")
+		// TODO: change serviceName
+		p := handler.NewPrometheus("goboilerplate", handler.URLSkipper)
+		if promAddress != "" {
+			p.SetListenAddress(promAddress)
+		}
+		p.Use(e)
 
 		/******
 		Statsd
