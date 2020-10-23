@@ -93,7 +93,6 @@ func ErrorMiddleware() echo.MiddlewareFunc {
 			err = errors.Cause(err)
 
 			if _, ok := err.(goboilerplate.ConstraintError); ok {
-				lg.Errorln(msg)
 				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 			}
 
@@ -102,7 +101,6 @@ func ErrorMiddleware() echo.MiddlewareFunc {
 				lg.Errorln(msg)
 				return echo.NewHTTPError(http.StatusRequestTimeout, err.Error())
 			case goboilerplate.ErrNotFound:
-				lg.Errorln(msg)
 				return echo.NewHTTPError(http.StatusNotFound, err.Error())
 			}
 
