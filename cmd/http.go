@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"net/http"
@@ -74,5 +74,5 @@ var httpCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(httpCmd)
+	RootCmd.AddCommand(httpCmd)
 }

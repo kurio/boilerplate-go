@@ -1,27 +1,12 @@
 package main
 
 import (
-	"os"
-	"strings"
-	"time"
-
+	"github.com/kurio/boilerplate-go/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"os"
+	"strings"
 )
-
-var (
-	httpProcessTimeout time.Duration
-)
-
-var rootCmd = &cobra.Command{
-	Use:   "goboilerplate",
-	Short: "Short description.",
-}
-
-func initApp() {
-	// TODO: configurable through env
-	httpProcessTimeout = 2 * time.Second
-}
 
 func main() {
 	levelStr := strings.ToLower(os.Getenv("LOG_LEVEL"))
@@ -33,11 +18,11 @@ func main() {
 		log.Fatal("LOG_LEVEL is not well-set:", level)
 	}
 
-	setupLogs(level)
+	cmd.SetupLogs(level)
 
-	cobra.OnInitialize(initApp)
+	cobra.OnInitialize(cmd.InitApp)
 
-	if err := rootCmd.Execute(); err != nil {
+	if err := cmd.RootCmd.Execute(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
