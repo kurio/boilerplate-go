@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"io"
@@ -31,7 +31,7 @@ func (hook *WriterHook) Levels() []log.Level {
 	return hook.LogLevels
 }
 
-func setupLogs(level log.Level) {
+func SetupLogs(level log.Level) {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
 
