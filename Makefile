@@ -26,11 +26,11 @@ vendor: go.mod go.sum
 .PHONY: lint-prepare
 lint-prepare:
 	@echo "Installing golangci-lint"
-	@GO111MODULE=off go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+	@wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.31.0
 
 .PHONY: lint
 lint: vendor
-	GO111MODULE=on golangci-lint run ./...
+	golangci-lint run ./...
 
 .PHONY: mockery-prepare
 mockery-prepare:
@@ -84,7 +84,7 @@ mysql-up:
 
 .PHONY: mysql-down
 mysql-down:
-	@docker stop goboilerplate_mysql
+	@docker-compose stop mysql && docker-compose rm -f
 
 .PHONY: mongo-up
 mongo-up:
@@ -92,7 +92,15 @@ mongo-up:
 
 .PHONY: mongo-down
 mongo-down:
-	@docker stop goboilerplate_mongo
+	@docker-compose stop mongo && docker-compose rm -f
+
+.PHONY: redis-up
+redis-up:
+	@docker-compose up -d redis
+
+.PHONY: redis-down
+redis-down:
+	@docker-compose stop redis && docker-compose rm -f
 
 .PHONY: docker
 docker: vendor $(SOURCES)
