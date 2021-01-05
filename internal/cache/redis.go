@@ -53,3 +53,24 @@ func (s redisClient) Set(key string, data interface{}, expiration ExpiryDuration
 
 	return nil
 }
+
+func (s redisClient) Del(key string) error {
+	res, err := s.conn.Del(key).Result()
+	if res > 0 && err == nil {
+		return nil
+	}
+
+	if err == redis.Nil {
+		return fmt.Errorf("%v", ErrNotFound)
+	}
+
+	return fmt.Errorf("%v", err)
+}
+
+func (s redisClient) Flush() error {
+	if _, err := s.conn.FlushDB().Result(); err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	return nil
+}

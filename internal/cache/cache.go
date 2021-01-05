@@ -34,4 +34,6 @@ var (
 type DataCacher interface {
 	Get(key string, data interface{}) error
 	Set(key string, data interface{}, expiration ExpiryDuration) error
+	Del(key string) error
+	Flush() error
 }

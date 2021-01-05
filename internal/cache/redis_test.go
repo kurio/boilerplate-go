@@ -129,3 +129,62 @@ func (s *redisTestSuite) TestRedisCacheSet() {
 		require.Equal(t, data, obj)
 	})
 }
+
+func (s *redisTestSuite) TestRedisCacheDel() {
+	tests := []struct {
+		testName      string
+		key           string
+		shouldCache   bool
+		expectedError error
+	}{
+		{
+			testName:      "success",
+			key:           "myKey1",
+			shouldCache:   true,
+			expectedError: nil,
+		},
+		{
+			testName:      "data not found",
+			key:           "404",
+			shouldCache:   false,
+			expectedError: cache.ErrNotFound,
+		},
+	}
+
+	for _, test := range tests {
+		s.T().Run(test.testName, func(t *testing.T) {
+			if test.shouldCache {
+				err := s.DB.Set(test.key, "some-value", expirationTime[cache.DurationLong]).Err()
+				require.NoError(t, err)
+			}
+
+			cacher := cache.NewRedisClient(s.DB, cache.ExpiryConf{})
+
+			err := cacher.Del(test.key)
+
+			if test.expectedError != nil {
+				require.EqualError(s.T(), err, test.expectedError.Error())
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func (s *redisTestSuite) TestRedisCacheFlush() {
+	err := s.DB.Set("some-key", "some-value", expirationTime[cache.DurationLong]).Err()
+	require.NoError(s.T(), err)
+
+	b, err := s.DB.Get("some-key").Bytes()
+	require.NoError(s.T(), err)
+	require.Len(s.T(), b, 10)
+
+	cacher := cache.NewRedisClient(s.DB, cache.ExpiryConf{})
+
+	err = cacher.Flush()
+	require.NoError(s.T(), err)
+
+	b, err = s.DB.Get("some-key").Bytes()
+	require.Error(s.T(), err)
+	require.Len(s.T(), b, 0)
+}
