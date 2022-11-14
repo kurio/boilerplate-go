@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 /*
@@ -45,8 +44,6 @@ type (
 	}
 	// SystemEvent is the interface for system event.
 	SystemEvent interface {
-		// // GetEventName returns the event name
-		// GetEventName() string
 		// GetSystemEvent returns the system event body struct.
 		GetSystemEventBody() SystemEventBody
 		// GetOccuredTime returns the event occured time.
@@ -68,15 +65,22 @@ func (n EventName) String() string {
 }
 
 const (
-// Add context key for publisher here.
-// e.g
-// ContextKeyFoo = ContextKey("foo")
+	// TODO: Add context key for publisher here.
+	ContextKeyFoo = ContextKey("foo")
 
-// List of article event name.
-// EventFooCreated = EventName("foo.created")
+	// List of event names.
+	// TODO: update
+	EventFooCreated = EventName("foo.created")
+	EventFooUpdated = EventName("foo.updated")
+	EventFooDeleted = EventName("foo.deleted")
 )
 
-var eventNameToJSONUnmarshalFunc = map[EventName]JSONUnmarshalFunc{}
+var eventNameToJSONUnmarshalFunc = map[EventName]JSONUnmarshalFunc{
+	// TODO: update
+	EventFooCreated: unmarshalFooCreatedEvent,
+	// EventFooUpdated: unmarshalFooUpdatedEvent,
+	// EventFooDeleted: unmarshalFooDeletedEvent,
+}
 
 // publisherFromContext get Publisher from ctx.
 func publisherFromContext(ctx context.Context, contextKeyPublisher ContextKey) EventPublisher {
@@ -91,7 +95,7 @@ func publisherFromContext(ctx context.Context, contextKeyPublisher ContextKey) E
 func PublishSystemEvent(ctx context.Context, eb SystemEventBody) {
 	publisher := publisherFromContext(ctx, eb.TopicKey())
 	if publisher == nil {
-		log.Debugf("no publisher for event %s", eb.Name())
+		logrus.Debugf("no publisher for event %s", eb.Name())
 		return
 	}
 
@@ -116,5 +120,55 @@ func SystemEventFromJSON(data []byte) (e SystemEvent, err error) {
 	}
 
 	e, err = unmarshal(data)
+	return
+}
+
+// Implementation of events
+type FooCreated struct {
+	Foo interface{} `json:"foo"`
+}
+
+func (eb FooCreated) Name() EventName {
+	return EventFooCreated
+}
+
+func (eb FooCreated) TopicKey() ContextKey {
+	return ContextKeyFoo
+}
+
+func (eb FooCreated) GenerateEvent() SystemEvent {
+	return FooCreatedEvent{
+		Body:        eb,
+		OccuredTime: time.Now().Round(0),
+	}
+}
+
+type FooCreatedEvent struct {
+	Body        FooCreated `json:"body"`
+	OccuredTime time.Time  `json:"occured_time"`
+}
+
+func (e FooCreatedEvent) GetSystemEventBody() SystemEventBody {
+	return e.Body
+}
+func (e FooCreatedEvent) GetOccuredTime() time.Time {
+	return e.OccuredTime
+}
+
+func (e FooCreatedEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"name":         e.Body.Name(),
+		"body":         e.Body,
+		"occured_time": e.OccuredTime.Format(time.RFC3339Nano),
+	})
+}
+
+func unmarshalFooCreatedEvent(data []byte) (res SystemEvent, err error) {
+	event := FooCreatedEvent{}
+	err = json.Unmarshal(data, &event)
+	if err != nil {
+		return
+	}
+	res = event
 	return
 }
