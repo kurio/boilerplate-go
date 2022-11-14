@@ -1,4 +1,4 @@
-version: '2.3'
+version: '3.8'
 
 networks: 
   backend:
@@ -7,7 +7,6 @@ networks:
 services:
   mysql:
     image: mysql:5.7
-    container_name: goboilerplate_mysql
     ports:
       - 3306:3306
     environment:
@@ -19,22 +18,14 @@ services:
       - backend
 
   mongo:
-    image: mvertes/alpine-mongo:4.2
-    container_name: goboilerplate_mongo
+    image: mongo:4.2
     ports:
       - 27017:27017
     networks:
       - backend
 
-  statsd:
-    image: prom/statsd-exporter
-    container_name: statsd
-    ports:
-      - 9102:9102
-
   redis:
     image: redis:latest
-    container_name: goboilerplate_redis
     ports:
       - 6379:6379
     networks:
@@ -42,14 +33,18 @@ services:
   
   api:
     image: goboilerplate
-    container_name: goboilerplate_api
+    build:
+      context: .
+      args:
+        - BUILD_VERSION=dev
+        - GITHUB_OAUTH=${GITHUB_OAUTH}
     ports:
       - 7723:7723
     env_file:
       - .env
-    links:
+    depends_on:
       - mysql
       - mongo
-      - statsd
+      - redis
     networks: 
       - backend

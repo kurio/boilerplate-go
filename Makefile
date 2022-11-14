@@ -1,81 +1,70 @@
 SOURCES := $(shell find . -name '*.go' -type f -not -path './vendor/*'  -not -path '*/mocks/*')
 TEST_OPTS := -covermode=atomic $(TEST_OPTS)
 
-IMAGE_NAME = goboilerplate
-BINARY_NAME = goboilerplate
-
 # Database
 MYSQL_ADDRESS ?= localhost:3306
 MYSQL_USER ?= kurio
 MYSQL_PASSWORD ?= supersecret
 MYSQL_DATABASE ?= myDB
+MIGRATION_STEP ?=
 MONGO_URI ?= mongodb://localhost:27017
 
-.PHONY: goboilerplate
-goboilerplate: vendor $(SOURCES)
+.PHONY: build
+build:
 	@echo "Building binary"
-	@GO111MODULE=on go build -o $(BINARY_NAME) github.com/kurio/boilerplate-go/cmd/goboilerplate
+	@go build -o goboilerplate github.com/kurio/boilerplate-go/cmd/goboilerplate
 
-# Dependencies Management
+# Prepare for development environment
+.PHONY: prepare-dev
+prepare-dev: vendor lint-prepare mockery-prepare;
 
 .PHONY: vendor
 vendor: go.mod go.sum
-	@GO111MODULE=on go get ./...
+	go get ./...
 
 # Linter
 .PHONY: lint-prepare
 lint-prepare:
 	@echo "Installing golangci-lint"
-	@wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.31.0
-
-.PHONY: lint
-lint: vendor
-	golangci-lint run ./...
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 .PHONY: mockery-prepare
 mockery-prepare:
 	@echo "Installing mockery"
-	@GO111MODULE=off go get -u github.com/vektra/mockery/.../
+	@go install github.com/vektra/mockery/v2@latest
 
-# Testing
-.PHONY: unittest
-unittest: vendor
-	GO111MODULE=on go test -short $(TEST_OPTS) ./...
+# Linter & Tests
+.PHONY: lint
+lint:
+	golangci-lint run ./...
 
 .PHONY: test
-test: vendor
-	GO111MODULE=on go test $(TEST_OPTS) ./...
+test:
+	go test $(TEST_OPTS) ./...
 
-# Build and Installation
-.PHONY: install
-install: vendor
-	@GO111MODULE=on go install ./...
-
-.PHONY: uninstall
-uninstall:
-	@echo "Removing binaries and libraries"
-	@GO111MODULE=on go clean -i ./...
+.PHONY: unittest
+unittest:
+	go test -short $(TEST_OPTS) ./...
 
 # Database Migration
 .PHONY: migrate-prepare
 migrate-prepare:
-	@GO111MODULE=off go get -tags 'mysql' -u github.com/golang-migrate/migrate/cmd/migrate
+	@go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 .PHONY: migrate-up
 migrate-up:
 	@migrate -database "mysql://$(MYSQL_USER):$(MYSQL_PASSWORD)@tcp($(MYSQL_ADDRESS))/$(MYSQL_DATABASE)" \
-	-path=internal/mysql/migrations up
+	-path=internal/mysql/migrations up $(MIGRATION_STEP)
 
 .PHONY: migrate-down
 migrate-down:
 	@migrate -database "mysql://$(MYSQL_USER):$(MYSQL_PASSWORD)@tcp($(MYSQL_ADDRESS))/$(MYSQL_DATABASE)" \
-	-path=internal/mysql/migrations down
+	-path=internal/mysql/migrations down $(MIGRATION_STEP)
 
 .PHONY: migrate-drop
 migrate-drop:
 	@migrate -database "mysql://$(MYSQL_USER):$(MYSQL_PASSWORD)@tcp($(MYSQL_ADDRESS))/$(MYSQL_DATABASE)" \
 	-path=internal/mysql/migrations drop
-
 
 # Docker
 .PHONY: mysql-up
@@ -103,9 +92,8 @@ redis-down:
 	@docker-compose stop redis && docker-compose rm -f
 
 .PHONY: docker
-docker: vendor $(SOURCES)
-	@cp ~/.ssh/id_rsa .keys/
-	@docker build -t $(IMAGE_NAME) .
+docker:
+	@docker-compose build
 
 .PHONY: run
 run:
@@ -113,7 +101,7 @@ run:
 
 .PHONY: stop
 stop:
-	@docker-compose down
+	@docker-compose down -v
 
 # Mock
 MyRepository: filename.go
@@ -121,3 +109,15 @@ MyRepository: filename.go
 
 MyService: filename.go
 	@mockery -name=MyService
+
+# Scan for vulnerabilities
+.PHONY: scan-fs
+scan-fs:
+	trivy fs --vuln-type 'library' --severity 'MEDIUM,HIGH,CRITICAL' --ignore-unfixed --security-checks vuln .
+
+.PHONY: scan-image
+scan-image:
+	trivy image --vuln-type 'library' --severity 'MEDIUM,HIGH,CRITICAL' --ignore-unfixed --security-checks vuln goboilerplate
+
+.PHONY: scan
+	scan: scan-fs scan-image;
