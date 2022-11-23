@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	goboilerplate "github.com/kurio/boilerplate-go"
@@ -18,8 +18,8 @@ import (
 )
 
 func TestErrorMiddleware(t *testing.T) {
-	log.SetFormatter(&log.JSONFormatter{})
-	log.SetReportCaller(true)
+	logrus.SetFormatter(&logrus.JSONFormatter{})
+	logrus.SetReportCaller(true)
 
 	mw := handler.ErrorMiddleware()
 
@@ -35,7 +35,7 @@ func TestErrorMiddleware(t *testing.T) {
 		}
 
 		buf := new(bytes.Buffer)
-		log.SetOutput(buf)
+		logrus.SetOutput(buf)
 
 		err := mw(h)(c).(*echo.HTTPError)
 
@@ -50,7 +50,7 @@ func TestErrorMiddleware(t *testing.T) {
 		}
 
 		buf := new(bytes.Buffer)
-		log.SetOutput(buf)
+		logrus.SetOutput(buf)
 
 		err := mw(h)(c).(*echo.HTTPError)
 		require.Error(t, err)
@@ -64,7 +64,7 @@ func TestErrorMiddleware(t *testing.T) {
 		}
 
 		buf := new(bytes.Buffer)
-		log.SetOutput(buf)
+		logrus.SetOutput(buf)
 
 		err := mw(h)(c).(*echo.HTTPError)
 		require.Error(t, err)
@@ -93,7 +93,7 @@ func TestErrorMiddleware(t *testing.T) {
 		}
 
 		buf := new(bytes.Buffer)
-		log.SetOutput(buf)
+		logrus.SetOutput(buf)
 
 		err := mw(h)(c).(*echo.HTTPError)
 		require.Error(t, err)
