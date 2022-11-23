@@ -11,12 +11,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type mongoSuite struct {
+type MongoSuite struct {
 	suite.Suite
 	database *mongo.Database
 }
 
-func (s *mongoSuite) SetupSuite() {
+func (s *MongoSuite) SetupSuite() {
 	mongoDSN := os.Getenv("MONGO_TEST_URI")
 	if mongoDSN == "" {
 		mongoDSN = "mongodb://localhost:27017"
@@ -27,11 +27,12 @@ func (s *mongoSuite) SetupSuite() {
 		dbName = "testDB"
 	}
 
-	client, err := mongo.Connect(context.Background(),
+	client, err := mongo.Connect(
+		context.Background(),
 		options.Client().
+			ApplyURI(mongoDSN).
 			SetConnectTimeout(2*time.Second).
-			SetServerSelectionTimeout(3*time.Second).
-			ApplyURI(mongoDSN),
+			SetServerSelectionTimeout(3*time.Second),
 	)
 	require.NoError(s.T(), err)
 
@@ -41,7 +42,7 @@ func (s *mongoSuite) SetupSuite() {
 	s.database = client.Database(dbName)
 }
 
-func (s *mongoSuite) TearDownSuite() {
+func (s *MongoSuite) TearDownSuite() {
 	err := s.database.Client().Disconnect(context.Background())
 	require.NoError(s.T(), err)
 }
