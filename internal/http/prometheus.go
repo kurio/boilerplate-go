@@ -1,3 +1,29 @@
+/*
+Based on:
+https://github.com/labstack/echo-contrib/blob/master/prometheus/prometheus.go
+
+Example:
+
+```
+
+	package main
+
+	import (
+		handler "github.com/kurio/boilerplate-go/internal/http"
+	)
+
+	func main() {
+		e := echo.New()
+
+		// Enable metrics middleware
+		p := handler.NewPrometheus("goboilerplate", nil)
+		p.Use(e)
+
+		e.Logger.Fatal(e.Start(":1323"))
+	}
+
+```
+*/
 package http
 
 import (
@@ -16,6 +42,7 @@ import (
 
 var defaultMetricPath = "/metrics"
 
+// Customized metrics, but based on the standard default metrics
 var reqCnt = &echoProm.Metric{
 	ID:          "reqCnt",
 	Name:        "requests_total",
@@ -67,8 +94,8 @@ var reqSzHis = &echoProm.Metric{
 
 var defaultMetrics = []*echoProm.Metric{
 	reqCnt,
-	reqDurHis,
 	reqDur,
+	reqDurHis,
 	resSz,
 	resSzHis,
 	reqSz,
@@ -79,7 +106,6 @@ var defaultMetrics = []*echoProm.Metric{
 type Prometheus struct {
 	reqCnt, reqDur, reqSz, resSz  *prometheus.CounterVec
 	reqDurHis, resSzHis, reqSzHis *prometheus.HistogramVec
-	listenAddress                 string
 
 	MetricsList []*echoProm.Metric
 	MetricsPath string
@@ -87,10 +113,31 @@ type Prometheus struct {
 	ServiceName string
 	Skipper     middleware.Skipper
 
-	RequestCounterURLLabelMappingFunc echoProm.RequestCounterURLLabelMappingFunc
+	RequestCounterURLLabelMappingFunc echoProm.RequestCounterLabelMappingFunc
 
 	// Context string to use as a prometheus URL label
 	URLLabelFromContext string
+}
+
+// NewPrometheus generates a new set of metrics with a certain service name
+func NewPrometheus(serviceName string, skipper middleware.Skipper) *Prometheus {
+	if skipper == nil {
+		skipper = middleware.DefaultSkipper
+	}
+
+	p := &Prometheus{
+		MetricsList: defaultMetrics,
+		MetricsPath: defaultMetricPath,
+		Subsystem:   "",
+		Skipper:     skipper,
+		ServiceName: serviceName,
+		RequestCounterURLLabelMappingFunc: func(c echo.Context) string {
+			return c.Path() // by default do nothing, i.e. return URL as is
+		},
+	}
+
+	p.registerMetrics()
+	return p
 }
 
 // NewMetric associates prometheus.Collector based on Metric.Type
@@ -140,38 +187,6 @@ func NewMetric(m *echoProm.Metric, subsystem string) prometheus.Collector {
 	return metric
 }
 
-// URLSkipper skip unwanted URL from scrapped by Prometheus
-func URLSkipper(c echo.Context) bool {
-	return strings.HasPrefix(c.Path(), "/ping")
-}
-
-// SetListenAddress for exposing metrics on address. If not set, it will be exposed at the
-// same address of the echo engine that is being used
-func (p *Prometheus) SetListenAddress(address string) {
-	p.listenAddress = address
-}
-
-// NewPrometheus generates a new set of metrics with a certain service name
-func NewPrometheus(serviceName string, skipper middleware.Skipper) *Prometheus {
-	if skipper == nil {
-		skipper = middleware.DefaultSkipper
-	}
-
-	p := &Prometheus{
-		MetricsList: defaultMetrics,
-		MetricsPath: defaultMetricPath,
-		Subsystem:   "",
-		Skipper:     skipper,
-		ServiceName: serviceName,
-		RequestCounterURLLabelMappingFunc: func(c echo.Context) string {
-			return c.Path() // by default do nothing, i.e. return URL as is
-		},
-	}
-
-	p.registerMetrics()
-	return p
-}
-
 func (p *Prometheus) registerMetrics() {
 	for _, metricDef := range p.MetricsList {
 		metric := NewMetric(metricDef, p.Subsystem)
@@ -201,18 +216,7 @@ func (p *Prometheus) registerMetrics() {
 // Use adds the middleware to the Echo engine.
 func (p *Prometheus) Use(e *echo.Echo) {
 	e.Use(p.HandlerFunc)
-	if p.listenAddress != "" {
-		promEcho := echo.New()
-		promEcho.GET(p.MetricsPath, prometheusHandler())
-		go func() {
-			if err := promEcho.Start(p.listenAddress); err != nil {
-				log.Error("Cannot start prometheus server with error: ", err)
-			}
-			log.Infof("Start Prometheus on: %v", p.listenAddress)
-		}()
-	} else {
-		e.GET(p.MetricsPath, prometheusHandler())
-	}
+	e.GET(p.MetricsPath, prometheusHandler())
 }
 
 // HandlerFunc defines handler function for middleware
@@ -229,15 +233,15 @@ func (p *Prometheus) HandlerFunc(next echo.HandlerFunc) echo.HandlerFunc {
 		reqSz := float64(computeApproximateRequestSize(c.Request()))
 
 		if err = next(c); err != nil {
-			c.Error(err)
+			return
 		}
 
-		elapsed := float64(time.Since(start)) / float64(time.Second)
-		resSz := float64(c.Response().Size)
-
 		status := strconv.Itoa(c.Response().Status)
-		url := p.RequestCounterURLLabelMappingFunc(c)
+		resSz := float64(c.Response().Size)
+		elapsed := time.Since(start).Seconds()
+
 		method := c.Request().Method
+		url := p.RequestCounterURLLabelMappingFunc(c)
 
 		if len(p.URLLabelFromContext) > 0 {
 			u := c.Get(p.URLLabelFromContext)
@@ -247,11 +251,13 @@ func (p *Prometheus) HandlerFunc(next echo.HandlerFunc) echo.HandlerFunc {
 			url = u.(string)
 		}
 
-		p.reqDurHis.WithLabelValues(p.ServiceName, method).Observe(elapsed)
-		p.resSzHis.WithLabelValues(p.ServiceName, method).Observe(resSz)
-		p.reqSzHis.WithLabelValues(p.ServiceName, method).Observe(reqSz)
-		p.reqDur.WithLabelValues(p.ServiceName, status, method, url).Add(elapsed)
 		p.reqCnt.WithLabelValues(p.ServiceName, status, method, url).Inc()
+
+		p.reqDurHis.WithLabelValues(p.ServiceName, method).Observe(elapsed)
+		p.reqSzHis.WithLabelValues(p.ServiceName, method).Observe(reqSz)
+		p.resSzHis.WithLabelValues(p.ServiceName, method).Observe(resSz)
+
+		p.reqDur.WithLabelValues(p.ServiceName, status, method, url).Add(elapsed)
 		p.reqSz.WithLabelValues(p.ServiceName, status, method, url).Add(reqSz)
 		p.resSz.WithLabelValues(p.ServiceName, status, method, url).Add(resSz)
 
@@ -289,4 +295,9 @@ func computeApproximateRequestSize(r *http.Request) int {
 		s += int(r.ContentLength)
 	}
 	return s
+}
+
+// URLSkipper skip unwanted URL from scrapped by Prometheus
+func URLSkipper(c echo.Context) bool {
+	return strings.HasPrefix(c.Path(), "/ping")
 }
