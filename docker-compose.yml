@@ -11,8 +11,8 @@ services:
       - 3306:3306
     environment:
       - MYSQL_DATABASE=myDB
-      - MYSQL_USER=kurio
-      - MYSQL_PASSWORD=supersecret
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=pass
       - MYSQL_ROOT_PASSWORD=root-pass
     networks: 
       - backend
@@ -31,7 +31,7 @@ services:
     networks:
       - backend
   
-  api:
+  http:
     image: goboilerplate
     build:
       context: .
@@ -43,8 +43,11 @@ services:
     env_file:
       - .env
     depends_on:
-      - mysql
-      - mongo
-      - redis
+      mysql:
+        condition: service_started
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_started
     networks: 
       - backend
