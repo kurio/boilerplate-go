@@ -1,4 +1,4 @@
-SOURCES := $(shell find . -name '*.go' -type f -not -path './vendor/*'  -not -path '*/mocks/*')
+SOURCES := $(shell find . -name '*.go' -type f -not -path './vendor/*' -not -path '*/mocks/*')
 TEST_OPTS := -covermode=atomic $(TEST_OPTS)
 
 # Database

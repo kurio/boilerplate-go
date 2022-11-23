@@ -4,33 +4,27 @@ Go App is an app written in Go.
 
 ## Contributing
 
-Checkout:
+Checkout and prepare the dev environment:
 
 ```bash
 git clone https://github.com/kurio/boilerplate-go.git
-```
-
-Prepare the tools:
-
-```bash
 cd boilerplate-go
-make lint-prepare
-make mockery-prepare
+make prepare-dev
 ```
 
 ### Running
 
-To start and stop the HTTP server and scheduler, run:
+To start and stop the HTTP server and everything, run:
 
 ```bash
-make mongo-up
 make mysql-up
+make mongo-up
+make redis-up
 make docker
+make migrate-up
 make run
 make stop
 ```
-
-To start the HTTP server, run `make run`.
 
 ### Testing
 
