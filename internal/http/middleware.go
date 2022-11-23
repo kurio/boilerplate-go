@@ -4,17 +4,32 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/labstack/echo/v4"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	goboilerplate "github.com/kurio/boilerplate-go"
 )
+
+// TimeoutMiddleware is a middleware that set maximum HTTP response time before considered timeout.
+func TimeoutMiddleware(httpProcessTimeout time.Duration) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			ctx, cancel := context.WithTimeout(c.Request().Context(), httpProcessTimeout)
+			defer cancel()
+
+			// recompose request with a new context
+			httpReq := c.Request().WithContext(ctx)
+			c.SetRequest(httpReq)
+
+			return next(c)
+		}
+	}
+}
 
 // ResponseTimeMiddleware is used to send response_time metrics to statsd.
 func ResponseTimeMiddleware(statsdClient *statsd.Client) echo.MiddlewareFunc {
@@ -27,26 +42,27 @@ func ResponseTimeMiddleware(statsdClient *statsd.Client) echo.MiddlewareFunc {
 				return err
 			}
 
-			path := c.Request().URL.Path
-
-			metricName := getMetricName(c.Request().Method + " " + path)
-			if metricName == "" {
-				return nil
+			endpoint := "UNKNOWN"
+			for _, r := range c.Echo().Routes() {
+				if r.Method == c.Request().Method && r.Path == c.Path() {
+					endpoint = r.Name
+				}
 			}
 
 			responseTime := time.Since(startTime)
 
 			tags := []string{
+				// TODO: update
 				"service:goboilerplate",
-				fmt.Sprintf("operation:%s", metricName),
+				fmt.Sprintf("operation:%s", endpoint),
 			}
 
 			if err := statsdClient.Gauge("http.request.duration.seconds", responseTime.Seconds(), tags, float64(1.0)); err != nil {
-				log.Warningf("error statsdClient.Gauge: %+v", err)
+				logrus.Warningf("error statsdClient.Gauge: %+v", err)
 			}
 
 			if err := statsdClient.Incr("http.request.total", tags, float64(1)); err != nil {
-				log.Warningf("error statsdClient.Incr: %+v", err)
+				logrus.Warningf("error statsdClient.Incr: %+v", err)
 			}
 
 			return nil
@@ -67,64 +83,48 @@ func ErrorMiddleware() echo.MiddlewareFunc {
 				return nil
 			}
 
+			originalError := errors.Cause(err)
+
 			headers := []string{}
 			for k, v := range c.Request().Header {
 				headers = append(headers, fmt.Sprintf(`%s:%s`, k, strings.Join(v, ",")))
 			}
-			lg := log.WithFields(log.Fields{
+
+			log := logrus.WithFields(logrus.Fields{
 				"headers": strings.Join(headers, " | "),
 				"method":  c.Request().Method,
 				"uri":     c.Request().RequestURI,
 			})
 
-			if e, ok := err.(*echo.HTTPError); ok {
-				lg.Errorln(e.Message)
-				return echo.NewHTTPError(e.Code, e.Message)
+			if e, ok := originalError.(*echo.HTTPError); ok {
+				if e.Code >= 500 {
+					log.Error(e.Message)
+				}
+
+				return e
 			}
 
-			msg := err.Error()
+			msg := originalError.Error()
 
-			newErr, ok := err.(stackTracer)
-			if ok {
+			if newErr, ok := err.(stackTracer); ok {
 				st := newErr.StackTrace()
 				msg = fmt.Sprintf("%s\n%+v", err.Error(), st[0:3])
 			}
 
-			err = errors.Cause(err)
-
-			if _, ok := err.(goboilerplate.ConstraintError); ok {
-				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+			if _, ok := originalError.(goboilerplate.ConstraintError); ok {
+				return echo.NewHTTPError(http.StatusBadRequest, originalError.Error())
 			}
 
-			switch err {
+			switch originalError {
 			case context.DeadlineExceeded, context.Canceled:
-				lg.Errorln(msg)
-				return echo.NewHTTPError(http.StatusRequestTimeout, err.Error())
+				return echo.NewHTTPError(http.StatusRequestTimeout, originalError.Error())
 			case goboilerplate.ErrNotFound:
-				return echo.NewHTTPError(http.StatusNotFound, err.Error())
+				return echo.NewHTTPError(http.StatusNotFound, originalError.Error())
 			}
 
-			lg.Errorln(msg)
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			log.Error(msg)
+
+			return echo.NewHTTPError(http.StatusInternalServerError, originalError.Error())
 		}
 	}
-}
-
-func getMetricName(pathURL string) string {
-	pathLower := strings.ToLower(pathURL)
-
-	m := map[*regexp.Regexp]string{
-		// TODO: mapping of endpoints to metric name.
-		// regexp.MustCompile(`^get /something$`):             "fetch_something",
-		// regexp.MustCompile(`^get /something/([\w-])+$`):    "get_something",
-		// regexp.MustCompile(`^post /something$`):            "create_something",
-		// regexp.MustCompile(`^delete /something/([\w-])+$`): "delete_something",
-	}
-
-	for re, metricName := range m {
-		if re.MatchString(pathLower) {
-			return metricName
-		}
-	}
-	return ""
 }
