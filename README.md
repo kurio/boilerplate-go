@@ -40,3 +40,48 @@ Commit checklist:
 2. Run all tests (see: [Testing](#Testing))
 3. Commit with proper, descriptive message (see: [https://karma-runner.github.io/2.0/dev/git-commit-msg.html](https://karma-runner.github.io/2.0/dev/git-commit-msg.html))
 4. Create *Pull Request*, describing the changes
+
+## Profiling
+
+Resources regarding profiling:
+
+* https://go.dev/blog/pprof
+* https://github.com/google/pprof/issues/166
+
+In this repository, we expose the `/debug` endpoint when `debug` is set to `true`.
+
+http://localhost:7723/debug/pprof/
+
+To look at the flamegraph:
+
+* Start the server
+* Hit the server (using `wrk`, `hey`, `ab`, `locust`, etc.)
+* Run `go tool pprof http://localhost:7723/debug/pprof/profile`
+* After the profile is generated, run `go tool pprof -http=: <path-to-profile>`
+
+Example:
+
+```bash
+go run ./cmd/goboilerplate http
+
+# Run locust
+cd ../locust
+locust -f goboilerplate/locustfile.py --host http://localhost:7723
+
+# Open up the Web UI after generating 30-second CPU profile
+go tool pprof -http=:9999 http://localhost:7723/debug/pprof/profile
+# Open up the Web UI after generating heap profile
+go tool pprof -http=:9999 http://localhost:7723/debug/pprof/heap
+```
+
+p.s. On Ubuntu, make sure to have installed `graphviz` and `gv`
+
+```bash
+apt-get install graphviz gv
+```
+
+Or `graphviz` on Mac
+
+```bash
+brew install graphviz
+```
