@@ -41,7 +41,7 @@ func TestErrorMiddleware(t *testing.T) {
 
 		require.Error(t, err)
 		require.Equal(t, http.StatusNotFound, err.Code)
-		require.Contains(t, buf.String(), goboilerplate.ErrNotFound.Error())
+		require.Empty(t, buf.String())
 	})
 
 	t.Run("with constraint error", func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestErrorMiddleware(t *testing.T) {
 		err := mw(h)(c).(*echo.HTTPError)
 		require.Error(t, err)
 		require.Equal(t, http.StatusBadRequest, err.Code)
-		require.Contains(t, buf.String(), "this is a constraint error")
+		require.Empty(t, buf.String())
 	})
 
 	t.Run("with unknown error", func(t *testing.T) {
@@ -98,6 +98,6 @@ func TestErrorMiddleware(t *testing.T) {
 		err := mw(h)(c).(*echo.HTTPError)
 		require.Error(t, err)
 		require.Equal(t, http.StatusRequestTimeout, err.Code)
-		require.Contains(t, buf.String(), context.DeadlineExceeded.Error())
+		require.Empty(t, buf.String())
 	})
 }

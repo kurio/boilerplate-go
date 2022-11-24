@@ -21,6 +21,7 @@ require (
 	github.com/prometheus/client_golang v1.12.2
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v0.0.5
+	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.8.0
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
