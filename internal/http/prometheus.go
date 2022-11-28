@@ -61,7 +61,7 @@ var reqDurHis = &echoProm.Metric{
 	Name:        "request_duration_histogram_seconds",
 	Description: "The Histogram for HTTP request latencies in seconds.",
 	Type:        "histogram_duration_vec",
-	Args:        []string{"service", "method"}}
+	Args:        []string{"service", "code", "method", "url"}}
 
 var resSz = &echoProm.Metric{
 	ID:          "resSz",
@@ -75,7 +75,7 @@ var resSzHis = &echoProm.Metric{
 	Name:        "response_size_histogram_bytes",
 	Description: "The Histogram for HTTP response sizes in bytes.",
 	Type:        "histogram_size_vec",
-	Args:        []string{"service", "method"}}
+	Args:        []string{"service", "code", "method", "url"}}
 
 var reqSz = &echoProm.Metric{
 	ID:          "reqSz",
@@ -89,7 +89,7 @@ var reqSzHis = &echoProm.Metric{
 	Name:        "request_size_histogram_bytes",
 	Description: "The Histogram for HTTP request sizes in bytes.",
 	Type:        "histogram_size_vec",
-	Args:        []string{"service", "method"}}
+	Args:        []string{"service", "code", "method", "url"}}
 
 var defaultMetrics = []*echoProm.Metric{
 	reqCnt,
@@ -252,9 +252,9 @@ func (p *Prometheus) HandlerFunc(next echo.HandlerFunc) echo.HandlerFunc {
 
 		p.reqCnt.WithLabelValues(p.ServiceName, status, method, url).Inc()
 
-		p.reqDurHis.WithLabelValues(p.ServiceName, method).Observe(elapsed)
-		p.reqSzHis.WithLabelValues(p.ServiceName, method).Observe(reqSz)
-		p.resSzHis.WithLabelValues(p.ServiceName, method).Observe(resSz)
+		p.reqDurHis.WithLabelValues(p.ServiceName, status, method, url).Observe(elapsed)
+		p.reqSzHis.WithLabelValues(p.ServiceName, status, method, url).Observe(reqSz)
+		p.resSzHis.WithLabelValues(p.ServiceName, status, method, url).Observe(resSz)
 
 		p.reqDur.WithLabelValues(p.ServiceName, status, method, url).Add(elapsed)
 		p.reqSz.WithLabelValues(p.ServiceName, status, method, url).Add(reqSz)

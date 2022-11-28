@@ -93,11 +93,11 @@ redis-down:
 
 .PHONY: otel-up
 otel-up:
-	@docker-compose up -d jaeger-all-in-one zipkin-all-in-one otel-collector prometheus
+	@docker-compose -f otel/compose.yaml up -d
 
 .PHONY: otel-down
 otel-down:
-	@docker-compose stop jaeger-all-in-one zipkin-all-in-one otel-collector prometheus
+	@docker-compose -f otel/compose.yaml down -v
 
 .PHONY: docker
 docker:

@@ -122,7 +122,7 @@ func (m *ResponseTimeMiddleware) HandlerFunc(next echo.HandlerFunc) echo.Handler
 
 		m.responseTimeHistogram.Record(
 			c.Request().Context(),
-			responseTime.Seconds()/1000,
+			float64(responseTime.Milliseconds()),
 			attribute.Key("operation").String(operation),
 		)
 
