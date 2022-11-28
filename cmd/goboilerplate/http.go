@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	_ "net/http/pprof" // for profiling purpose
 	"os"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
@@ -65,6 +63,7 @@ func initHttpApp() {
 
 	e.HTTPErrorHandler = handler.ErrorHandler
 
+	/* uncomment if needed, set to debug, or set skipper
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:       true,
 		LogRoutePath: true,
@@ -81,6 +80,7 @@ func initHttpApp() {
 			return nil
 		},
 	}))
+	*/
 
 	/*****
 	Statsd
