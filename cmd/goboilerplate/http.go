@@ -17,8 +17,12 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/trace"
 
 	handler "github.com/kurio/boilerplate-go/internal/http"
+	"github.com/kurio/boilerplate-go/internal/otel"
 )
 
 var (
@@ -28,7 +32,9 @@ var (
 		Run:   runHttp,
 	}
 
-	e *echo.Echo
+	e              *echo.Echo
+	tracerProvider *trace.TracerProvider
+	meterProvider  *metric.MeterProvider
 )
 
 func init() {
@@ -92,6 +98,23 @@ func initHttpApp() {
 		}
 	}
 
+	/*****
+	Tracer
+	******/
+	// TODO: change exporter
+	spanExporter, err := otel.NewStdoutSpanExporter()
+	if err != nil {
+		logrus.Fatalf("error initializing span exporter: %+v", err)
+	}
+	tracerProvider = otel.InitTracerProvider(1.0, spanExporter)
+
+	// TODO: change exporter
+	metricExporter, err := otel.NewStdoutMetricExporter()
+	if err != nil {
+		logrus.Fatalf("error initializing metric exporter")
+	}
+	meterProvider = otel.InitMeterProvider(5*time.Second, metricExporter)
+
 	/*********
 	Prometheus
 	**********/
@@ -100,6 +123,7 @@ func initHttpApp() {
 	p.Use(e)
 
 	e.Use(
+		otelecho.Middleware("goboilerplate"),
 		handler.ResponseTimeMiddleware(statsdClient),
 		handler.TimeoutMiddleware(config.HTTP.Server.Timeout),
 		handler.ErrorMiddleware(),
@@ -169,6 +193,24 @@ func runHttp(cmd *cobra.Command, args []string) {
 		logrus.Debug("closing mysql client...")
 		if err := mysqlDB.Close(); err != nil {
 			logrus.Errorf("error closing mysql client: %+v", err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logrus.Debug("shutting down tracer provider...")
+		if err := tracerProvider.Shutdown(ctx); err != nil {
+			logrus.Errorf("error shutting down tracer provider: %v", err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logrus.Debug("shutting down meter provider...")
+		if err := meterProvider.Shutdown(ctx); err != nil {
+			logrus.Errorf("error shutting down meter provider")
 		}
 	}()
 
