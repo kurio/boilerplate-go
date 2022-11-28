@@ -95,6 +95,10 @@ redis-down:
 otel-up:
 	@docker-compose up -d jaeger-all-in-one zipkin-all-in-one otel-collector prometheus
 
+.PHONY: otel-down
+otel-down:
+	@docker-compose stop jaeger-all-in-one zipkin-all-in-one otel-collector prometheus
+
 .PHONY: docker
 docker:
 	@docker-compose build
