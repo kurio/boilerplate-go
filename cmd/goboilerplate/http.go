@@ -22,7 +22,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 
 	handler "github.com/kurio/boilerplate-go/internal/http"
-	"github.com/kurio/boilerplate-go/internal/otel"
 )
 
 var (
@@ -37,11 +36,9 @@ var (
 	meterProvider  *metric.MeterProvider
 )
 
-func init() {
-	rootCMD.AddCommand(httpCMD)
-}
-
 func initHttpApp() {
+	initOtel()
+
 	initMysqlDB()
 	initMongoClient()
 	initRedisClient()
@@ -98,33 +95,17 @@ func initHttpApp() {
 		}
 	}
 
-	/*****
-	Tracer
-	******/
-	// TODO: change exporter
-	spanExporter, err := otel.NewStdoutSpanExporter()
-	if err != nil {
-		logrus.Fatalf("error initializing span exporter: %+v", err)
-	}
-	tracerProvider = otel.InitTracerProvider(1.0, spanExporter)
-
-	// TODO: change exporter
-	metricExporter, err := otel.NewStdoutMetricExporter()
-	if err != nil {
-		logrus.Fatalf("error initializing metric exporter")
-	}
-	meterProvider = otel.InitMeterProvider(5*time.Second, metricExporter)
-
 	/*********
 	Prometheus
 	**********/
-	// promAddress := os.Getenv("PROMETHEUS_ADDRESS")
 	p := handler.NewPrometheus(app, handler.URLSkipper)
 	p.Use(e)
 
+	responseTimeMiddleware := handler.NewResponseTimeMiddleware(statsdClient, handler.URLSkipper)
+	responseTimeMiddleware.Use(e)
+
 	e.Use(
 		otelecho.Middleware("goboilerplate"),
-		handler.ResponseTimeMiddleware(statsdClient),
 		handler.TimeoutMiddleware(config.HTTP.Server.Timeout),
 		handler.ErrorMiddleware(),
 	)
@@ -146,16 +127,17 @@ func initHttpApp() {
 	}).Name = "getArticle"
 
 	e.GET("/something/:duration", func(c echo.Context) error {
-		sleepTime, err := strconv.ParseInt(c.Param("duration"), 10, 8)
+		sleepTime, err := strconv.ParseInt(c.Param("duration"), 10, 64)
 		if err != nil {
 			logrus.Errorf("error parsing duration: %+v", err)
 			sleepTime = 1
 		}
 		logrus.Debugf("sleep for %d ms", sleepTime)
 		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+
 		logrus.Debugf("returning...")
 		return c.String(http.StatusOK, "ok")
-	})
+	}).Name = "getSomething"
 
 	// TODO: handler.AddSomeHandler(e, ...)
 }

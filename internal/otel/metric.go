@@ -1,14 +1,17 @@
 package otel
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"time"
 
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/metric/global"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 )
 
 var meterProvider *sdkmetric.MeterProvider
@@ -25,8 +28,22 @@ func NewStdoutMetricExporter() (exporter sdkmetric.Exporter, err error) {
 	return
 }
 
+// NewOTLPMetricExporter initializes OTLP metric exporter. If
+// unset, localhost:4317 will be used as a default.
+func NewOTLPMetricExporter(endpoint string) (exporter sdkmetric.Exporter, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	exporter, err = otlpmetricgrpc.New(
+		ctx,
+		otlpmetricgrpc.WithInsecure(),
+		otlpmetricgrpc.WithEndpoint(endpoint),
+	)
+	return
+}
+
 // InitMeterProvider initializes meter provider
-func InitMeterProvider(interval time.Duration, exporter sdkmetric.Exporter) *sdkmetric.MeterProvider {
+func InitMeterProvider(interval time.Duration, exporter sdkmetric.Exporter, res *resource.Resource) *sdkmetric.MeterProvider {
 	if meterProvider != nil {
 		return meterProvider
 	}
@@ -38,6 +55,7 @@ func InitMeterProvider(interval time.Duration, exporter sdkmetric.Exporter) *sdk
 
 	meterProvider = sdkmetric.NewMeterProvider(
 		sdkmetric.WithReader(reader),
+		sdkmetric.WithResource(res),
 	)
 
 	global.SetMeterProvider(meterProvider)

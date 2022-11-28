@@ -29,7 +29,6 @@ package http
 import (
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	echoProm "github.com/labstack/echo-contrib/prometheus"
@@ -122,13 +121,13 @@ type Prometheus struct {
 // NewPrometheus generates a new set of metrics with a certain service name
 func NewPrometheus(serviceName string, skipper middleware.Skipper) *Prometheus {
 	if skipper == nil {
-		skipper = middleware.DefaultSkipper
+		skipper = URLSkipper
 	}
 
 	p := &Prometheus{
 		MetricsList: defaultMetrics,
 		MetricsPath: defaultMetricPath,
-		Subsystem:   "",
+		Subsystem:   "http",
 		Skipper:     skipper,
 		ServiceName: serviceName,
 		RequestCounterURLLabelMappingFunc: func(c echo.Context) string {
@@ -295,9 +294,4 @@ func computeApproximateRequestSize(r *http.Request) int {
 		s += int(r.ContentLength)
 	}
 	return s
-}
-
-// URLSkipper skip unwanted URL from scrapped by Prometheus
-func URLSkipper(c echo.Context) bool {
-	return strings.HasPrefix(c.Path(), "/ping")
 }

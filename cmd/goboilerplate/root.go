@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/XSAM/otelsql"
 	"github.com/go-redis/redis/v9"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
@@ -15,6 +16,7 @@ import (
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 
 	"github.com/kurio/boilerplate-go/cmd/logger"
 	_config "github.com/kurio/boilerplate-go/internal/config"
@@ -50,6 +52,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCMD.AddCommand(versionCMD)
+	rootCMD.AddCommand(httpCMD)
 	rootCMD.PersistentFlags().String("config", "", "Set this flag to use a configuration file.")
 }
 
@@ -84,13 +87,22 @@ func initConfig() {
 func initMysqlDB() {
 	var err error
 
-	mysqlDB, err = sql.Open("mysql", config.MySQL.DSN)
+	mysqlDB, err = otelsql.Open("mysql", config.MySQL.DSN, otelsql.WithAttributes(
+		semconv.DBSystemMySQL,
+	))
 	if err != nil {
 		logrus.Fatalf("Failed to initialize mysql client: %+v", err)
 	}
 	mysqlDB.SetConnMaxLifetime(config.MySQL.ConnMaxLifetime)
 	mysqlDB.SetMaxIdleConns(config.MySQL.MaxIdleConns)
 	mysqlDB.SetMaxOpenConns(config.MySQL.MaxOpenConns)
+
+	err = otelsql.RegisterDBStatsMetrics(mysqlDB, otelsql.WithAttributes(
+		semconv.DBSystemMySQL,
+	))
+	if err != nil {
+		logrus.Fatalf("error registering db stats metrics: %+v", err)
+	}
 }
 
 func initMongoClient() {

@@ -14,8 +14,9 @@ RUN git config --global url."https://${GITHUB_OAUTH}:x-oauth-basic@github.com/".
 COPY go.mod go.sum ./
 RUN go mod download
 
+ARG BUILD_VERSION=latest
 COPY . .
-RUN CGO_ENABLED=0 go build -o goboilerplate github.com/kurio/boilerplate-go/cmd/goboilerplate
+RUN CGO_ENABLED=0 go build -o goboilerplate -ldflags "-X 'main.gitCommit=${BUILD_VERSION}'" github.com/kurio/boilerplate-go/cmd/goboilerplate
 
 FROM gcr.io/distroless/static
 WORKDIR /app
