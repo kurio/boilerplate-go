@@ -96,7 +96,6 @@ func initHttpApp() {
 	Prometheus
 	**********/
 	// promAddress := os.Getenv("PROMETHEUS_ADDRESS")
-	// TODO: change serviceName
 	p := handler.NewPrometheus(app, handler.URLSkipper)
 	p.Use(e)
 
