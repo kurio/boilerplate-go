@@ -120,14 +120,12 @@ func (m *ResponseTimeMiddleware) HandlerFunc(next echo.HandlerFunc) echo.Handler
 			}
 		}
 
-		logrus.Debug("observing response time")
 		m.responseTimeHistogram.Record(
 			c.Request().Context(),
 			responseTime.Seconds()/1000,
 			attribute.Key("operation").String(operation),
 		)
 
-		logrus.Debug("observing request counter")
 		m.requestCounter.Add(
 			c.Request().Context(),
 			1,
