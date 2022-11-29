@@ -19,8 +19,17 @@ jobs:
       with:
         go-version: 1.19.3 # optional
 
-#     - name: configure
-#       run: ./configure
+    - name: Set Timezone
+      # You may pin to the exact commit or the version.
+      # uses: szenius/set-timezone@d1416e74a9a643cbf6c711905741e73e3a0c26b8
+      uses: szenius/set-timezone@v1.1
+      with:
+        # Desired timezone for Linux
+        timezoneLinux: Asia/Jakarta # optional, default is UTC
+        # Desired timezone for MacOS
+        timezoneMacos: Asia/Jakarta # optional, default is GMT
+        # Desired timezone for Windows
+        timezoneWindows: Asia/Jakarta # optional, default is UTC
 
     - name: Install dependencies
       run: make prepare-dev
