@@ -3,15 +3,22 @@ package main
 import (
 	"context"
 
-	"github.com/kurio/boilerplate-go/internal/otel"
 	"github.com/sirupsen/logrus"
 	otelpkg "go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+
+	"github.com/kurio/boilerplate-go/internal/otel"
+)
+
+var (
+	tracerProvider *trace.TracerProvider
+	meterProvider  *metric.MeterProvider
 )
 
 func initOtel() {
-	logrus.Debugf("Using otel agent address: %s", config.Otel.Exporter.OTLPEndpoint)
 	if !config.Debug {
 		// ignore error on production mode
 		otelpkg.SetErrorHandler(otelpkg.ErrorHandlerFunc(func(err error) {}))
@@ -29,6 +36,12 @@ func initOtel() {
 	)
 	if err != nil {
 		logrus.Fatalf("Could not set otel resources: %+v", err)
+	}
+
+	if config.Otel.Exporter.OTLPEndpoint == "" {
+		return
+	} else {
+		logrus.Debugf("Using otel agent address: %s", config.Otel.Exporter.OTLPEndpoint)
 	}
 
 	/*****

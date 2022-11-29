@@ -26,7 +26,6 @@ type Metric struct {
 }
 
 func loadOtelConfig() Otel {
-	viper.SetDefault("otel.exporter.otlp_endpoint", "127.0.0.1:4317")
 	viper.SetDefault("otel.tracer.sample_rate", 1.0)
 	viper.SetDefault("otel.metric.interval", 5)
 

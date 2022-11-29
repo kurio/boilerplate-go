@@ -78,9 +78,9 @@ func initConfig() {
 
 	logger.SetupLogs(config.LogLevelStr)
 	if config.Debug {
-		logrus.Warn("app is running in debug mode")
+		logrus.Warnf("%s is running in debug mode", app)
 	} else {
-		logrus.Info("app is running in production mode")
+		logrus.Infof("%s is running in production mode", app)
 	}
 }
 

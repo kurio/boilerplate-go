@@ -61,7 +61,7 @@ var reqDurHis = &echoProm.Metric{
 	Name:        "request_duration_histogram_seconds",
 	Description: "The Histogram for HTTP request latencies in seconds.",
 	Type:        "histogram_duration_vec",
-	Args:        []string{"service", "code", "method", "url"}}
+	Args:        []string{"service", "code", "operation"}}
 
 var resSz = &echoProm.Metric{
 	ID:          "resSz",
@@ -75,7 +75,7 @@ var resSzHis = &echoProm.Metric{
 	Name:        "response_size_histogram_bytes",
 	Description: "The Histogram for HTTP response sizes in bytes.",
 	Type:        "histogram_size_vec",
-	Args:        []string{"service", "code", "method", "url"}}
+	Args:        []string{"service", "code", "operation"}}
 
 var reqSz = &echoProm.Metric{
 	ID:          "reqSz",
@@ -89,7 +89,7 @@ var reqSzHis = &echoProm.Metric{
 	Name:        "request_size_histogram_bytes",
 	Description: "The Histogram for HTTP request sizes in bytes.",
 	Type:        "histogram_size_vec",
-	Args:        []string{"service", "code", "method", "url"}}
+	Args:        []string{"service", "code", "operation"}}
 
 var defaultMetrics = []*echoProm.Metric{
 	reqCnt,
@@ -212,6 +212,17 @@ func (p *Prometheus) registerMetrics() {
 	}
 }
 
+func (p *Prometheus) operationMappingFunc(c echo.Context) string {
+	operation := "UNKNOWN"
+	for _, r := range c.Echo().Routes() {
+		if r.Method == c.Request().Method && r.Path == c.Path() {
+			operation = r.Name
+		}
+	}
+
+	return operation
+}
+
 // Use adds the middleware to the Echo engine.
 func (p *Prometheus) Use(e *echo.Echo) {
 	e.Use(p.HandlerFunc)
@@ -241,6 +252,7 @@ func (p *Prometheus) HandlerFunc(next echo.HandlerFunc) echo.HandlerFunc {
 
 		method := c.Request().Method
 		url := p.RequestCounterURLLabelMappingFunc(c)
+		operation := p.operationMappingFunc(c)
 
 		if len(p.URLLabelFromContext) > 0 {
 			u := c.Get(p.URLLabelFromContext)
@@ -252,9 +264,9 @@ func (p *Prometheus) HandlerFunc(next echo.HandlerFunc) echo.HandlerFunc {
 
 		p.reqCnt.WithLabelValues(p.ServiceName, status, method, url).Inc()
 
-		p.reqDurHis.WithLabelValues(p.ServiceName, status, method, url).Observe(elapsed)
-		p.reqSzHis.WithLabelValues(p.ServiceName, status, method, url).Observe(reqSz)
-		p.resSzHis.WithLabelValues(p.ServiceName, status, method, url).Observe(resSz)
+		p.reqDurHis.WithLabelValues(p.ServiceName, status, operation).Observe(elapsed)
+		p.reqSzHis.WithLabelValues(p.ServiceName, status, operation).Observe(reqSz)
+		p.resSzHis.WithLabelValues(p.ServiceName, status, operation).Observe(resSz)
 
 		p.reqDur.WithLabelValues(p.ServiceName, status, method, url).Add(elapsed)
 		p.reqSz.WithLabelValues(p.ServiceName, status, method, url).Add(reqSz)

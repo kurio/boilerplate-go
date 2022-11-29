@@ -16,8 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/trace"
 
 	handler "github.com/kurio/boilerplate-go/internal/http"
 )
@@ -29,9 +27,7 @@ var (
 		Run:   runHttp,
 	}
 
-	e              *echo.Echo
-	tracerProvider *trace.TracerProvider
-	meterProvider  *metric.MeterProvider
+	e *echo.Echo
 )
 
 func initHttpApp() {
@@ -105,7 +101,7 @@ func initHttpApp() {
 	responseTimeMiddleware.Use(e)
 
 	e.Use(
-		otelecho.Middleware("goboilerplate"),
+		otelecho.Middleware(app),
 		handler.TimeoutMiddleware(config.HTTP.Server.Timeout),
 		handler.ErrorMiddleware(),
 	)
@@ -181,6 +177,9 @@ func runHttp(cmd *cobra.Command, args []string) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if tracerProvider == nil {
+			return
+		}
 		logrus.Debug("shutting down tracer provider...")
 		if err := tracerProvider.Shutdown(ctx); err != nil {
 			logrus.Errorf("error shutting down tracer provider: %v", err)
@@ -190,6 +189,9 @@ func runHttp(cmd *cobra.Command, args []string) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if meterProvider == nil {
+			return
+		}
 		logrus.Debug("shutting down meter provider...")
 		if err := meterProvider.Shutdown(ctx); err != nil {
 			logrus.Errorf("error shutting down meter provider")
