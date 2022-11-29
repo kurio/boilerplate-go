@@ -8,19 +8,13 @@ services:
       - MYSQL_USER=user
       - MYSQL_PASSWORD=pass
       - MYSQL_ROOT_PASSWORD=root-pass
-    networks: 
-      - backend
 
   mongo:
     image: mongo:4.2
     ports:
       - 27017:27017
-    networks:
-      - backend
 
   redis:
     image: redis:latest
     ports:
       - 6379:6379
-    networks:
-      - backend
