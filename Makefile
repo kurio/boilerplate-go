@@ -107,6 +107,10 @@ docker:
 run:
 	@docker-compose up -d
 
+.PHONY: run-with-otel
+run-with-otel:
+	@docker-compose -f compose.yaml -f compose.withotel.yaml up -d
+
 .PHONY: stop
 stop:
 	@docker-compose down -v

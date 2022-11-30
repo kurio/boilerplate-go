@@ -26,6 +26,13 @@ make run
 make stop
 ```
 
+To run with opentelemetry, after `migrate-up`, use these instead:
+
+```bash
+make otel-up
+make run-with-otel
+```
+
 ### Testing
 
 For running all tests, use `make test`.
@@ -66,7 +73,7 @@ go run ./cmd/goboilerplate http
 
 # Run locust
 cd ../locust
-locust -f goboilerplate/locustfile.py --host http://localhost:7723
+locust --config goboilerplate/locust.conf
 
 # Open up the Web UI after generating 30-second CPU profile
 go tool pprof -http=:9999 http://localhost:7723/debug/pprof/profile
