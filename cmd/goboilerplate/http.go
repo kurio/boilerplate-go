@@ -6,7 +6,6 @@ import (
 	_ "net/http/pprof" // for profiling purpose
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -59,6 +58,29 @@ func initHttpApp() {
 
 	e.HTTPErrorHandler = handler.ErrorHandler
 
+	/*****
+	Statsd
+	******/
+	var statsdClient *statsd.Client
+	var err error
+	if config.StatsdURL != "" {
+		statsdClient, err = statsd.New(config.StatsdURL)
+		if err != nil {
+			statsdClient = nil
+			logrus.Errorf("error initializing statsd client: %+v", err)
+		}
+	}
+
+	/*********
+	Prometheus
+	**********/
+	p := handler.NewPrometheus(app, handler.URLSkipper)
+
+	responseTimeMiddleware := handler.NewResponseTimeMiddleware(statsdClient, handler.URLSkipper)
+
+	/*********
+	Middleware
+	**********/
 	/* uncomment if needed, set to debug, or set skipper
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:       true,
@@ -78,34 +100,12 @@ func initHttpApp() {
 	}))
 	*/
 
-	/*****
-	Statsd
-	******/
-	var statsdClient *statsd.Client
-	var err error
-	if config.StatsdURL != "" {
-		statsdClient, err = statsd.New(config.StatsdURL)
-		if err != nil {
-			statsdClient = nil
-			logrus.Errorf("error initializing statsd client: %+v", err)
-		}
-	}
-
-	/*********
-	Prometheus
-	**********/
-	p := handler.NewPrometheus(app, handler.URLSkipper)
+	e.Use(otelecho.Middleware(app))
 	p.Use(e)
-
-	responseTimeMiddleware := handler.NewResponseTimeMiddleware(statsdClient, handler.URLSkipper)
 	responseTimeMiddleware.Use(e)
+	e.Use(handler.TimeoutMiddleware(config.HTTP.Server.Timeout))
 
-	e.Use(
-		otelecho.Middleware(app),
-		handler.TimeoutMiddleware(config.HTTP.Server.Timeout),
-		handler.ErrorMiddleware(),
-	)
-
+	// Basic handlers...
 	e.GET("/ping", func(c echo.Context) error {
 		return c.String(http.StatusOK, "pong")
 	}).Name = "ping"
@@ -114,28 +114,7 @@ func initHttpApp() {
 		return context.String(http.StatusOK, gitCommit)
 	}).Name = "version"
 
-	e.GET("/articles", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, make([]interface{}, 0))
-	}).Name = "fetchArticles"
-
-	e.GET("/articles/:id", func(c echo.Context) error {
-		return c.String(http.StatusOK, c.Param("id"))
-	}).Name = "getArticle"
-
-	e.GET("/something/:duration", func(c echo.Context) error {
-		sleepTime, err := strconv.ParseInt(c.Param("duration"), 10, 64)
-		if err != nil {
-			logrus.Errorf("error parsing duration: %+v", err)
-			sleepTime = 1
-		}
-		logrus.Debugf("sleep for %d ms", sleepTime)
-		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
-
-		logrus.Debugf("returning...")
-		return c.String(http.StatusOK, "ok")
-	}).Name = "getSomething"
-
-	// TODO: handler.AddSomeHandler(e, ...)
+	handler.AddSomeHandler(e)
 }
 
 func runHttp(cmd *cobra.Command, args []string) {
