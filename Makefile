@@ -22,7 +22,6 @@ prepare-dev: vendor lint-prepare mockery-prepare;
 vendor: go.mod go.sum
 	go get ./...
 
-# Linter
 .PHONY: lint-prepare
 lint-prepare:
 	@echo "Installing golangci-lint"
@@ -115,13 +114,6 @@ run-with-otel:
 stop:
 	@docker-compose down -v
 
-# Mock
-MyRepository: filename.go
-	@mockery -name=MyRepository
-
-MyService: filename.go
-	@mockery -name=MyService
-
 # Scan for vulnerabilities
 .PHONY: scan-fs
 scan-fs:
@@ -132,4 +124,11 @@ scan-image:
 	trivy image --vuln-type 'library' --severity 'MEDIUM,HIGH,CRITICAL' --ignore-unfixed --security-checks vuln goboilerplate
 
 .PHONY: scan
-	scan: scan-fs scan-image;
+scan: scan-fs scan-image;
+
+# Mock
+MyRepository: filename.go
+	@mockery -name=MyRepository
+
+MyService: filename.go
+	@mockery -name=MyService
