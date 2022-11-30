@@ -127,8 +127,13 @@ scan-image:
 scan: scan-fs scan-image;
 
 # Mock
-MyRepository: filename.go
-	@mockery -name=MyRepository
+mocks: Cacher;
 
-MyService: filename.go
-	@mockery -name=MyService
+Cacher: cacher.go
+	@mockery --name=Cacher
+
+# MyRepository: filename.go
+# 	@mockery --name=MyRepository
+
+# MyService: filename.go
+# 	@mockery --name=MyService
