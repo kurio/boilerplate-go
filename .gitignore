@@ -44,6 +44,9 @@ config.json
 config.yaml
 config.toml
 
+# Macos Files
+.DS_Store
+
 # Built binary file
 # TODO: update
 goboilerplate
