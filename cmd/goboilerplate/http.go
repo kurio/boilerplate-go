@@ -30,6 +30,7 @@ var (
 )
 
 func initHttpApp() {
+	initConfig()
 	initOtel()
 
 	initMysqlDB()

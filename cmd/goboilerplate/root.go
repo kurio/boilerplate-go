@@ -49,8 +49,6 @@ var (
 )
 
 func init() {
-	cobra.OnInitialize(initConfig)
-
 	rootCMD.AddCommand(versionCMD)
 	rootCMD.AddCommand(httpCMD)
 	rootCMD.PersistentFlags().String("config", "", "Set this flag to use a configuration file.")
