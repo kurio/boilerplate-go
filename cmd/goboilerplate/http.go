@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/DataDog/datadog-go/statsd"
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -23,20 +22,20 @@ var (
 	httpCMD = &cobra.Command{
 		Use:   "http",
 		Short: "Start the HTTP server.",
-		Run:   runHttp,
+		Run:   runHTTP,
 	}
 
 	e *echo.Echo
 )
 
-func initHttpApp() {
+func initHTTPApp() {
 	initConfig()
 	initOtel()
 
 	initMysqlDB()
 	initMongoClient()
 	initRedisClient()
-	initHttpClient()
+	initHTTPClient()
 
 	// expiryConf := goboilerplate.ExpiryConf{
 	// 	goboilerplate.DurationShort: config.Redis.ShortExpirationTime,
@@ -58,26 +57,6 @@ func initHttpApp() {
 	e.Server.WriteTimeout = config.HTTP.Server.WriteTimeout
 
 	e.HTTPErrorHandler = handler.ErrorHandler
-
-	/*****
-	Statsd
-	******/
-	var statsdClient *statsd.Client
-	var err error
-	if config.StatsdURL != "" {
-		statsdClient, err = statsd.New(config.StatsdURL)
-		if err != nil {
-			statsdClient = nil
-			logrus.Errorf("error initializing statsd client: %+v", err)
-		}
-	}
-
-	/*********
-	Prometheus
-	**********/
-	p := handler.NewPrometheus(app, handler.URLSkipper)
-
-	responseTimeMiddleware := handler.NewResponseTimeMiddleware(statsdClient, handler.URLSkipper)
 
 	/*********
 	Middleware
@@ -102,8 +81,10 @@ func initHttpApp() {
 	*/
 
 	e.Use(otelecho.Middleware(app))
+
+	p := handler.NewPrometheus(app, handler.URLSkipper)
 	p.Use(e)
-	responseTimeMiddleware.Use(e)
+
 	e.Use(handler.TimeoutMiddleware(config.HTTP.Server.Timeout))
 
 	// Basic handlers...
@@ -118,26 +99,26 @@ func initHttpApp() {
 	handler.AddSomeHandler(e)
 }
 
-func runHttp(cmd *cobra.Command, args []string) {
-	initHttpApp()
+func runHTTP(cmd *cobra.Command, args []string) {
+	initHTTPApp()
 
 	if config.Debug {
-		logrus.Warn("adding /debug for profiling")
+		logrus.Warn("Adding /debug for profiling")
 		e.GET("/debug/*", echo.WrapHandler(http.DefaultServeMux)).Name = "debug"
 	}
 
 	const address = ":7723"
 	go func() {
-		logrus.Infof("starting HTTP server at %s", address)
+		logrus.Infof("Starting HTTP server at %s", address)
 		if err := e.Start(address); err != nil && err != http.ErrServerClosed {
-			logrus.Fatalf("error http server: %+v", err)
+			logrus.Fatalf("Error http server: %+v", err)
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 
-	logrus.Debug("waiting on signal...")
+	logrus.Debug("Waiting on signal...")
 	<-quit
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -148,9 +129,9 @@ func runHttp(cmd *cobra.Command, args []string) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		logrus.Debug("closing mysql client...")
+		logrus.Debug("Closing mysql client...")
 		if err := mysqlDB.Close(); err != nil {
-			logrus.Errorf("error closing mysql client: %+v", err)
+			logrus.Errorf("Error closing mysql client: %+v", err)
 		}
 	}()
 
@@ -160,9 +141,9 @@ func runHttp(cmd *cobra.Command, args []string) {
 		if tracerProvider == nil {
 			return
 		}
-		logrus.Debug("shutting down tracer provider...")
+		logrus.Debug("Shutting down tracer provider...")
 		if err := tracerProvider.Shutdown(ctx); err != nil {
-			logrus.Errorf("error shutting down tracer provider: %v", err)
+			logrus.Errorf("Error shutting down tracer provider: %v", err)
 		}
 	}()
 
@@ -172,21 +153,21 @@ func runHttp(cmd *cobra.Command, args []string) {
 		if meterProvider == nil {
 			return
 		}
-		logrus.Debug("shutting down meter provider...")
+		logrus.Debug("Shutting down meter provider...")
 		if err := meterProvider.Shutdown(ctx); err != nil {
-			logrus.Errorf("error shutting down meter provider")
+			logrus.Errorf("Error shutting down meter provider")
 		}
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		logrus.Info("gracefully shutting down HTTP server...")
+		logrus.Info("Gracefully shutting down HTTP server...")
 		if err := e.Shutdown(ctx); err != nil {
-			logrus.Fatalf("error shutting down server: %+v", err)
+			logrus.Fatalf("Error shutting down server: %+v", err)
 		}
 	}()
 
 	wg.Wait()
-	logrus.Info("gracefully shut down")
+	logrus.Info("Gracefully shut down")
 }

@@ -95,7 +95,7 @@ func publisherFromContext(ctx context.Context, contextKeyPublisher ContextKey) E
 func PublishSystemEvent(ctx context.Context, eb SystemEventBody) {
 	publisher := publisherFromContext(ctx, eb.TopicKey())
 	if publisher == nil {
-		logrus.Debugf("no publisher for event %s", eb.Name())
+		logrus.Debugf("No publisher for event '%s'", eb.Name())
 		return
 	}
 

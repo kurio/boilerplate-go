@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/XSAM/otelsql"
+	"github.com/go-redis/redis/extra/redisotel/v9"
 	"github.com/go-redis/redis/v9"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
@@ -16,6 +17,8 @@ import (
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 
 	"github.com/kurio/boilerplate-go/cmd/logger"
@@ -59,19 +62,18 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	if err := viper.BindPFlag("config", rootCMD.Flags().Lookup("config")); err != nil {
-		logrus.Fatalf("error binding pflag 'config': %+v", err)
+		logrus.Fatalf("Error binding pflag 'config': %+v", err)
 	}
 
 	if configFile := viper.GetString("config"); configFile != "" {
-		logrus.Infof("using configFile: %s", configFile)
+		logrus.Infof("Using configFile: %s", configFile)
 		viper.SetConfigType("json")
 		viper.SetConfigFile(configFile)
 		if err := viper.ReadInConfig(); err != nil {
-			logrus.Errorf("error reading config file '%s': %+v", viper.ConfigFileUsed(), err)
+			logrus.Errorf("Error reading config file '%s': %+v", viper.ConfigFileUsed(), err)
 		}
 	}
 
-	// setConfig()
 	config = _config.LoadConfig()
 
 	logger.SetupLogs(config.LogLevelStr)
@@ -99,7 +101,7 @@ func initMysqlDB() {
 		semconv.DBSystemMySQL,
 	))
 	if err != nil {
-		logrus.Fatalf("error registering db stats metrics: %+v", err)
+		logrus.Fatalf("Error registering db stats metrics: %+v", err)
 	}
 }
 
@@ -113,7 +115,8 @@ func initMongoClient() {
 		options.Client().
 			ApplyURI(config.Mongo.URI).
 			SetConnectTimeout(config.Mongo.ConnectTimeout).
-			SetServerSelectionTimeout(config.Mongo.ServerSelectionTimeout),
+			SetServerSelectionTimeout(config.Mongo.ServerSelectionTimeout).
+			SetMonitor(otelmongo.NewMonitor()),
 	)
 	if err != nil {
 		logrus.Fatalf("Failed to initialize mongodb client: %+v", err)
@@ -121,7 +124,7 @@ func initMongoClient() {
 
 	err = mongoClient.Ping(context.Background(), nil)
 	if err != nil {
-		logrus.Fatalf("error pinging mongodb: %+v", err)
+		logrus.Fatalf("Error pinging mongodb: %+v", err)
 	}
 }
 
@@ -154,11 +157,18 @@ func initRedisClient() {
 	defer cancel()
 
 	if err := redisClient.Ping(ctx).Err(); err != nil {
-		logrus.Fatalf("error pinging redis: %+v", err)
+		logrus.Fatalf("Error pinging redis: %+v", err)
+	}
+
+	if err := redisotel.InstrumentTracing(redisClient); err != nil {
+		logrus.Fatalf("Error adding tracing instrumentation to redisClient: %+v", err)
+	}
+	if err := redisotel.InstrumentMetrics(redisClient); err != nil {
+		logrus.Fatalf("Error adding metrics instrumentation to redisClient: %+v", err)
 	}
 }
 
-func initHttpClient() {
+func initHTTPClient() {
 	defaultTransport := &http.Transport{
 		MaxIdleConns:        config.HTTP.Client.MaxIdleConns,
 		MaxIdleConnsPerHost: config.HTTP.Client.MaxIdleConnsPerHost,
@@ -167,5 +177,5 @@ func initHttpClient() {
 
 	httpClient = new(http.Client)
 	httpClient.Timeout = config.HTTP.Client.Timeout
-	httpClient.Transport = defaultTransport
+	httpClient.Transport = otelhttp.NewTransport(defaultTransport)
 }

@@ -37,7 +37,7 @@ func SetupLogs(levelStr string) {
 	}
 	level, err := logrus.ParseLevel(levelStr)
 	if err != nil {
-		logrus.Fatalf("error parsing log level: %+v", err)
+		logrus.Fatalf("Error parsing log level: %+v", err)
 	}
 	logrus.SetLevel(level)
 

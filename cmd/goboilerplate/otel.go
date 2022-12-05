@@ -48,15 +48,15 @@ func initOtel() {
 	Tracer
 	******/
 	// TODO: change exporter
-	// logrus.Debug("initializing new stdout span exporter")
+	// logrus.Debug("Initializing new stdout span exporter")
 	// spanExporter, err := otel.NewStdoutSpanExporter()
-	logrus.Debug("initializing new OTLP span exporter...")
+	logrus.Debug("Initializing new OTLP span exporter...")
 	spanExporter, err := otel.NewOTLPSpanExporter(config.Otel.Exporter.OTLPEndpoint)
 	if err != nil {
-		logrus.Fatalf("error initializing span exporter: %+v", err)
+		logrus.Fatalf("Error initializing span exporter: %+v", err)
 	}
 
-	logrus.Debug("initializing tracer provider...")
+	logrus.Debug("Initializing tracer provider...")
 	tracerProvider = otel.InitTracerProvider(
 		config.Otel.Tracer.SampleRate,
 		spanExporter,
@@ -66,14 +66,14 @@ func initOtel() {
 	Metric
 	******/
 	// TODO: change exporter
-	// logrus.Debug("initializing new stdout metric exporter...")
+	// logrus.Debug("Initializing new stdout metric exporter...")
 	// metricExporter, err := otel.NewStdoutMetricExporter()
-	logrus.Debug("initializing new OTLP metric exporter...")
+	logrus.Debug("Initializing new OTLP metric exporter...")
 	metricExporter, err := otel.NewOTLPMetricExporter(config.Otel.Exporter.OTLPEndpoint)
 	if err != nil {
-		logrus.Fatalf("error initializing metric exporter")
+		logrus.Fatalf("Error initializing metric exporter")
 	}
-	logrus.Debugf("initializing meter provider...")
+	logrus.Debugf("Initializing meter provider...")
 	meterProvider = otel.InitMeterProvider(
 		config.Otel.Metric.Interval,
 		metricExporter,

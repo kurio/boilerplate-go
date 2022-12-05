@@ -15,13 +15,13 @@ func AddSomeHandler(e *echo.Echo) {
 	g.GET("/:duration", func(c echo.Context) error {
 		sleepTime, err := strconv.ParseInt(c.Param("duration"), 10, 64)
 		if err != nil {
-			logrus.Errorf("error parsing duration: %+v", err)
+			logrus.Errorf("Error parsing duration: %+v", err)
 			sleepTime = 1
 		}
-		logrus.Debugf("sleep for %d ms", sleepTime)
+		logrus.Debugf("Sleep for %d ms", sleepTime)
 		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
 
-		logrus.Debugf("returning...")
+		logrus.Debugf("Returning...")
 		return c.String(http.StatusOK, "ok")
 	}).Name = "getSomething"
 

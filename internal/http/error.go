@@ -54,9 +54,7 @@ func ErrorHandler(err error, c echo.Context) {
 			message = e.Error()
 		}
 
-		if code >= 500 {
-			logError = true
-		}
+		logError = code >= 500
 	}
 
 	switch originalError {
