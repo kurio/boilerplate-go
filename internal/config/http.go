@@ -26,8 +26,8 @@ type HTTP struct {
 
 func loadHTTPConfig() HTTP {
 	viper.SetDefault("http.server.timeout_ms", 2000)
-	viper.SetDefault("http.server.read_timeout_ms", 2000)
-	viper.SetDefault("http.server.write_timeout_ms", 5000)
+	viper.SetDefault("http.server.read_timeout_ms", 0)
+	viper.SetDefault("http.server.write_timeout_ms", 0)
 
 	viper.SetDefault("http.client.timeout_ms", 3000)
 	viper.SetDefault("http.client.max_idle_conns", 100)
