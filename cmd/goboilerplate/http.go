@@ -15,7 +15,9 @@ import (
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 
+	goboilerplate "github.com/kurio/boilerplate-go"
 	handler "github.com/kurio/boilerplate-go/internal/http"
+	"github.com/kurio/boilerplate-go/internal/redis"
 )
 
 var (
@@ -37,11 +39,11 @@ func initHTTPApp() {
 	initRedisClient()
 	initHTTPClient()
 
-	// expiryConf := goboilerplate.ExpiryConf{
-	// 	goboilerplate.DurationShort: config.Redis.ShortExpirationTime,
-	// 	goboilerplate.DurationLong: config.Redis.LongExpirationTime,
-	// }
-	// cacher := redis.NewRedisCacher(redisClient, expiryConf, app)
+	expiryConf := goboilerplate.ExpiryConf{
+		goboilerplate.DurationShort: config.Redis.ShortExpirationTime,
+		goboilerplate.DurationLong:  config.Redis.LongExpirationTime,
+	}
+	cacher := redis.NewRedisCacher(redisClient, expiryConf, app)
 
 	// initService()
 
@@ -96,7 +98,7 @@ func initHTTPApp() {
 		return context.String(http.StatusOK, gitCommit)
 	}).Name = "version"
 
-	handler.AddSomeHandler(e)
+	handler.AddSomeHandler(e, cacher)
 }
 
 func runHTTP(cmd *cobra.Command, args []string) {

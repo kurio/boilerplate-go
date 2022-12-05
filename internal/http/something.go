@@ -1,15 +1,20 @@
 package http
 
 import (
+	"encoding/json"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+
+	goboilerplate "github.com/kurio/boilerplate-go"
 )
 
-func AddSomeHandler(e *echo.Echo) {
+func AddSomeHandler(e *echo.Echo, cacher goboilerplate.Cacher) {
 	g := e.Group("/something")
 
 	g.GET("/:duration", func(c echo.Context) error {
@@ -30,7 +35,36 @@ func AddSomeHandler(e *echo.Echo) {
 	}).Name = "fetchArticles"
 
 	e.GET("/articles/:id", func(c echo.Context) error {
-		return c.String(http.StatusOK, c.Param("id"))
-	}).Name = "getArticle"
+		articleID := c.Param("id")
 
+		var err error
+		articleStr, err := cacher.Get(c.Request().Context(), articleID)
+		if err == nil {
+			var article map[string]interface{}
+			err := json.Unmarshal([]byte(articleStr), &article)
+			if err == nil {
+				return c.JSON(http.StatusOK, article)
+			}
+		}
+
+		if errors.Cause(err) != goboilerplate.ErrNotFound {
+			logrus.Warnf("Error getting article '%s' from cache: %+v", articleID, err)
+		}
+
+		time.Sleep(time.Duration(rand.Intn(200)+100) * time.Millisecond) // simulate getting data from storage
+		article := map[string]interface{}{"id": articleID}
+
+		articleBytes, err := json.Marshal(article)
+		if err != nil {
+			logrus.Warnf("Error marshalling article to JSON: %+v", err)
+			return c.JSON(http.StatusOK, article)
+		}
+
+		err = cacher.Set(c.Request().Context(), articleID, string(articleBytes), goboilerplate.DurationShort)
+		if err != nil {
+			logrus.Warnf("Error setting article '%s' to cache: %+v", articleID, err)
+		}
+
+		return c.JSON(http.StatusOK, article)
+	}).Name = "getArticle"
 }
