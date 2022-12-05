@@ -82,7 +82,7 @@ func initHTTPApp() {
 	}))
 	*/
 
-	e.Use(otelecho.Middleware(app))
+	e.Use(otelecho.Middleware(app, otelecho.WithSkipper(handler.URLSkipper)))
 
 	p := handler.NewPrometheus(app, handler.URLSkipper)
 	p.Use(e)
