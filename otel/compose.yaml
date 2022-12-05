@@ -27,7 +27,7 @@ services:
   # Collector
   otel-collector:
     image: otel/opentelemetry-collector
-    # container_name: otel-collector
+    container_name: otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
@@ -46,7 +46,7 @@ services:
       - otel
 
   prometheus:
-    # container_name: prometheus
+    container_name: prometheus
     image: prom/prometheus:latest
     restart: always
     volumes:
