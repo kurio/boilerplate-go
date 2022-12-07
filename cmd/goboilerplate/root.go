@@ -153,18 +153,18 @@ func initRedisClient() {
 		})
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := redisClient.Ping(ctx).Err(); err != nil {
-		logrus.Fatalf("Error pinging redis: %+v", err)
-	}
-
 	if err := redisotel.InstrumentTracing(redisClient); err != nil {
 		logrus.Fatalf("Error adding tracing instrumentation to redisClient: %+v", err)
 	}
 	if err := redisotel.InstrumentMetrics(redisClient); err != nil {
 		logrus.Fatalf("Error adding metrics instrumentation to redisClient: %+v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		logrus.Fatalf("Error pinging redis: %+v", err)
 	}
 }
 
