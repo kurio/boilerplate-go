@@ -80,11 +80,12 @@ To look at the flamegraph:
 Example:
 
 ```bash
-go run ./cmd/goboilerplate http
+# set DEBUG to true in .env
+make run
 
 # Run locust
 cd ../locust
-locust --config goboilerplate/locust.conf
+locust --config goboilerplate.conf
 
 # Open up the Web UI after generating 30-second CPU profile
 go tool pprof -http=:9999 http://localhost:7723/debug/pprof/profile
