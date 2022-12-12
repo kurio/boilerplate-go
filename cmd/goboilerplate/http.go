@@ -2,50 +2,48 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	_ "net/http/pprof" // for profiling purpose
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/DataDog/datadog-go/statsd"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 
+	goboilerplate "github.com/kurio/boilerplate-go"
 	handler "github.com/kurio/boilerplate-go/internal/http"
+	"github.com/kurio/boilerplate-go/internal/redis"
 )
 
 var (
 	httpCMD = &cobra.Command{
 		Use:   "http",
 		Short: "Start the HTTP server.",
-		Run:   runHttp,
+		Run:   runHTTP,
 	}
 
 	e *echo.Echo
 )
 
-func init() {
-	rootCMD.AddCommand(httpCMD)
-}
+func initHTTPApp() {
+	initConfig()
+	initOtel()
 
-func initHttpApp() {
 	initMysqlDB()
 	initMongoClient()
 	initRedisClient()
-	initHttpClient()
+	initHTTPClient()
 
-	// expiryConf := goboilerplate.ExpiryConf{
-	// 	goboilerplate.DurationShort: config.Redis.ShortExpirationTime,
-	// 	goboilerplate.DurationLong: config.Redis.LongExpirationTime,
-	// }
-	// cacher := redis.NewRedisCacher(redisClient, expiryConf, app)
+	expiryConf := goboilerplate.ExpiryConf{
+		goboilerplate.DurationShort: config.Redis.ShortExpirationTime,
+		goboilerplate.DurationLong:  config.Redis.LongExpirationTime,
+	}
+	cacher := redis.NewRedisCacher(redisClient, expiryConf, app)
 
 	// initService()
 
@@ -62,6 +60,10 @@ func initHttpApp() {
 
 	e.HTTPErrorHandler = handler.ErrorHandler
 
+	/*********
+	Middleware
+	**********/
+	/* uncomment if needed, set to debug, or set skipper
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:       true,
 		LogRoutePath: true,
@@ -78,33 +80,16 @@ func initHttpApp() {
 			return nil
 		},
 	}))
+	*/
 
-	/*****
-	Statsd
-	******/
-	var statsdClient *statsd.Client
-	var err error
-	if config.StatsdURL != "" {
-		statsdClient, err = statsd.New(config.StatsdURL)
-		if err != nil {
-			statsdClient = nil
-			logrus.Errorf("error initializing statsd client: %+v", err)
-		}
-	}
+	e.Use(otelecho.Middleware(app, otelecho.WithSkipper(handler.URLSkipper)))
 
-	/*********
-	Prometheus
-	**********/
-	// promAddress := os.Getenv("PROMETHEUS_ADDRESS")
 	p := handler.NewPrometheus(app, handler.URLSkipper)
 	p.Use(e)
 
-	e.Use(
-		handler.ResponseTimeMiddleware(statsdClient),
-		handler.TimeoutMiddleware(config.HTTP.Server.Timeout),
-		handler.ErrorMiddleware(),
-	)
+	e.Use(handler.TimeoutMiddleware(config.HTTP.Server.Timeout))
 
+	// Basic handlers...
 	e.GET("/ping", func(c echo.Context) error {
 		return c.String(http.StatusOK, "pong")
 	}).Name = "ping"
@@ -113,49 +98,29 @@ func initHttpApp() {
 		return context.String(http.StatusOK, gitCommit)
 	}).Name = "version"
 
-	e.GET("/articles", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, make([]interface{}, 0))
-	}).Name = "fetchArticles"
-
-	e.GET("/articles/:id", func(c echo.Context) error {
-		return c.String(http.StatusOK, c.Param("id"))
-	}).Name = "getArticle"
-
-	e.GET("/something/:duration", func(c echo.Context) error {
-		sleepTime, err := strconv.ParseInt(c.Param("duration"), 10, 8)
-		if err != nil {
-			logrus.Errorf("error parsing duration: %+v", err)
-			sleepTime = 1
-		}
-		logrus.Debugf("sleep for %d ms", sleepTime)
-		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
-		logrus.Debugf("returning...")
-		return c.String(http.StatusOK, "ok")
-	})
-
-	// TODO: handler.AddSomeHandler(e, ...)
+	handler.AddSomeHandler(e, cacher)
 }
 
-func runHttp(cmd *cobra.Command, args []string) {
-	initHttpApp()
+func runHTTP(cmd *cobra.Command, args []string) {
+	initHTTPApp()
 
 	if config.Debug {
-		logrus.Warn("adding /debug for profiling")
+		logrus.Warn("Adding /debug for profiling")
 		e.GET("/debug/*", echo.WrapHandler(http.DefaultServeMux)).Name = "debug"
 	}
 
 	const address = ":7723"
 	go func() {
-		logrus.Infof("starting HTTP server at %s", address)
+		logrus.Infof("Starting HTTP server at %s", address)
 		if err := e.Start(address); err != nil && err != http.ErrServerClosed {
-			logrus.Fatalf("error http server: %+v", err)
+			logrus.Fatalf("Error http server: %+v", err)
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 
-	logrus.Debug("waiting on signal...")
+	logrus.Debug("Waiting on signal...")
 	<-quit
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -166,21 +131,45 @@ func runHttp(cmd *cobra.Command, args []string) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		logrus.Debug("closing mysql client...")
+		logrus.Debug("Closing mysql client...")
 		if err := mysqlDB.Close(); err != nil {
-			logrus.Errorf("error closing mysql client: %+v", err)
+			logrus.Errorf("Error closing mysql client: %+v", err)
 		}
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		logrus.Info("gracefully shutting down HTTP server...")
+		if tracerProvider == nil {
+			return
+		}
+		logrus.Debug("Shutting down tracer provider...")
+		if err := tracerProvider.Shutdown(ctx); err != nil {
+			logrus.Errorf("Error shutting down tracer provider: %v", err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if meterProvider == nil {
+			return
+		}
+		logrus.Debug("Shutting down meter provider...")
+		if err := meterProvider.Shutdown(ctx); err != nil {
+			logrus.Errorf("Error shutting down meter provider")
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logrus.Info("Gracefully shutting down HTTP server...")
 		if err := e.Shutdown(ctx); err != nil {
-			logrus.Fatalf("error shutting down server: %+v", err)
+			logrus.Fatalf("Error shutting down server: %+v", err)
 		}
 	}()
 
 	wg.Wait()
-	logrus.Info("gracefully shut down")
+	logrus.Info("Gracefully shut down")
 }

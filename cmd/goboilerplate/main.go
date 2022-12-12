@@ -6,6 +6,6 @@ import (
 
 func main() {
 	if err := rootCMD.Execute(); err != nil {
-		logrus.Fatalf("error executing command: %+v", err)
+		logrus.Fatalf("Error executing command: %+v", err)
 	}
 }

@@ -1,0 +1,19 @@
+networks:
+  otel:
+    external: true
+    name: otel
+
+x-otel-env:
+  &otel-env
+  OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+  OTEL_TRACER_SAMPLE_RATE: 1.0
+  OTEL_METRIC_INTERVAL: 10
+
+services:
+  http:
+    environment:
+      <<: *otel-env
+    networks:
+      otel:
+        aliases:
+          - goboilerplate_http

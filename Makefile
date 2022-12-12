@@ -12,7 +12,7 @@ MONGO_URI ?= mongodb://localhost:27017
 .PHONY: build
 build:
 	@echo "Building binary"
-	@go build -o goboilerplate github.com/kurio/boilerplate-go/cmd/goboilerplate
+	@go build -o goboilerplate -ldflags "-X 'main.gitCommit=$(shell git rev-list -1 HEAD)'" github.com/kurio/boilerplate-go/cmd/goboilerplate
 
 # Prepare for development environment
 .PHONY: prepare-dev
@@ -22,7 +22,6 @@ prepare-dev: vendor lint-prepare mockery-prepare;
 vendor: go.mod go.sum
 	go get ./...
 
-# Linter
 .PHONY: lint-prepare
 lint-prepare:
 	@echo "Installing golangci-lint"
@@ -91,6 +90,14 @@ redis-up:
 redis-down:
 	@docker-compose stop redis && docker-compose rm -f
 
+.PHONY: otel-up
+otel-up:
+	@docker-compose -f otel/compose.yaml up -d
+
+.PHONY: otel-down
+otel-down:
+	@docker-compose -f otel/compose.yaml down -v
+
 .PHONY: docker
 docker:
 	@docker-compose build
@@ -99,16 +106,13 @@ docker:
 run:
 	@docker-compose up -d
 
+.PHONY: run-with-otel
+run-with-otel:
+	@docker-compose -f compose.yaml -f compose.withotel.yaml up -d
+
 .PHONY: stop
 stop:
 	@docker-compose down -v
-
-# Mock
-MyRepository: filename.go
-	@mockery -name=MyRepository
-
-MyService: filename.go
-	@mockery -name=MyService
 
 # Scan for vulnerabilities
 .PHONY: scan-fs
@@ -120,4 +124,16 @@ scan-image:
 	trivy image --vuln-type 'library' --severity 'MEDIUM,HIGH,CRITICAL' --ignore-unfixed --security-checks vuln goboilerplate
 
 .PHONY: scan
-	scan: scan-fs scan-image;
+scan: scan-fs scan-image;
+
+# Mock
+mocks: Cacher;
+
+Cacher: cacher.go
+	@mockery --name=Cacher
+
+# MyRepository: filename.go
+# 	@mockery --name=MyRepository
+
+# MyService: filename.go
+# 	@mockery --name=MyService

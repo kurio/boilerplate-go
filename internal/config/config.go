@@ -14,6 +14,8 @@ type Config struct {
 	Mongo Mongo
 	Redis Redis
 	HTTP  HTTP
+
+	Otel Otel
 }
 
 func LoadConfig() Config {
@@ -30,6 +32,8 @@ func LoadConfig() Config {
 	c.Mongo = loadMongoConfig()
 	c.Redis = loadRedisConfig()
 	c.HTTP = loadHTTPConfig()
+
+	c.Otel = loadOtelConfig()
 
 	return c
 }
