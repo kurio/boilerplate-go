@@ -12,6 +12,17 @@ cd boilerplate-go
 make prepare-dev
 ```
 
+### Database Migrations
+
+To add another migration, run:
+
+```bash
+migrate create -dir internal/mysql/migrations -ext sql MIGRATION_NAME
+```
+
+Set the `MIGRATION_NAME` to describe the migration.
+Please refer to: https://github.com/golang-migrate/migrate/tree/master/cli
+
 ### Running
 
 To start and stop the HTTP server and everything, run:
