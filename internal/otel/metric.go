@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/metric/global"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"google.golang.org/grpc"
 )
 
 var meterProvider *sdkmetric.MeterProvider
@@ -38,6 +39,7 @@ func NewOTLPMetricExporter(endpoint string) (exporter sdkmetric.Exporter, err er
 		ctx,
 		otlpmetricgrpc.WithInsecure(),
 		otlpmetricgrpc.WithEndpoint(endpoint),
+		otlpmetricgrpc.WithDialOption(grpc.WithBlock()),
 	)
 	if err != nil {
 		err = errors.Wrap(err, "error initializing otlp metric exporter")
