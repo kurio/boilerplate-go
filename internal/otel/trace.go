@@ -40,6 +40,9 @@ func NewOTLPSpanExporter(endpoint string) (exporter sdktrace.SpanExporter, err e
 			otlptracegrpc.WithDialOption(grpc.WithBlock()),
 		),
 	)
+	if err != nil {
+		err = errors.Wrap(err, "error initializing otlp span exporter")
+	}
 	return
 }
 

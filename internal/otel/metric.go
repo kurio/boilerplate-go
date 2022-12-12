@@ -39,6 +39,9 @@ func NewOTLPMetricExporter(endpoint string) (exporter sdkmetric.Exporter, err er
 		otlpmetricgrpc.WithInsecure(),
 		otlpmetricgrpc.WithEndpoint(endpoint),
 	)
+	if err != nil {
+		err = errors.Wrap(err, "error initializing otlp metric exporter")
+	}
 	return
 }
 
