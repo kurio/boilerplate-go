@@ -12,6 +12,12 @@ cd boilerplate-go
 make prepare-dev
 ```
 
+If you have a difficulty on getting modules from private repository, this command should help:
+
+```bash
+go env -w GOPRIVATE=github.com/KurioApp/*
+```
+
 ### Database Migrations
 
 To add another migration, run:
@@ -21,7 +27,7 @@ migrate create -dir internal/mysql/migrations -ext sql MIGRATION_NAME
 ```
 
 Set the `MIGRATION_NAME` to describe the migration.
-Please refer to: https://github.com/golang-migrate/migrate/tree/master/cli
+Please refer to: https://github.com/golang-migrate/migrate/tree/master/cmd/migrate
 
 ### Running
 
