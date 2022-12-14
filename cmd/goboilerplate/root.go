@@ -30,8 +30,9 @@ const app = "goboilerplate"
 
 var (
 	rootCMD = &cobra.Command{
-		Use:   app,
-		Short: "Short description.",
+		Use:     app,
+		Short:   "Short description.",
+		Version: gitCommit,
 	}
 
 	versionCMD = &cobra.Command{

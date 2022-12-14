@@ -12,7 +12,7 @@ MONGO_URI ?= mongodb://localhost:27017
 .PHONY: build
 build:
 	@echo "Building binary"
-	@go build -o goboilerplate -ldflags "-X 'main.gitCommit=$(shell git rev-list -1 HEAD)'" github.com/kurio/boilerplate-go/cmd/goboilerplate
+	@go build -o goboilerplate -ldflags "-X 'main.gitCommit=$(shell git rev-parse --short=8 HEAD)'" github.com/kurio/boilerplate-go/cmd/goboilerplate
 
 # Prepare for development environment
 .PHONY: prepare-dev
