@@ -1,9 +1,6 @@
 networks: 
   backend:
     driver: bridge
-  otel:
-    external:
-      true
 
 x-goboilerplate-common:
   &goboilerplate-common
