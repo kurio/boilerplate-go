@@ -16,7 +16,7 @@ build:
 
 # Prepare for development environment
 .PHONY: prepare-dev
-prepare-dev: vendor lint-prepare mockery-prepare;
+prepare-dev: vendor lint-prepare mockery-prepare migrate-prepare;
 
 .PHONY: vendor
 vendor: go.mod go.sum
