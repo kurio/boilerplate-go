@@ -49,5 +49,4 @@ config.toml
 
 # Built binary file
 # TODO: update
-goboilerplate
-!goboilerplate/
+/goboilerplate
