@@ -66,13 +66,15 @@ func initConfig() {
 		logrus.Fatalf("Error binding pflag 'config': %+v", err)
 	}
 
+	viper.SetConfigType("json")
 	if configFile := viper.GetString("config"); configFile != "" {
 		logrus.Infof("Using configFile: %s", configFile)
-		viper.SetConfigType("json")
 		viper.SetConfigFile(configFile)
-		if err := viper.ReadInConfig(); err != nil {
-			logrus.Errorf("Error reading config file '%s': %+v", viper.ConfigFileUsed(), err)
-		}
+	} else {
+		viper.SetConfigFile("config.json")
+	}
+	if err := viper.ReadInConfig(); err != nil {
+		logrus.Errorf("Error reading config file '%s': %+v", viper.ConfigFileUsed(), err)
 	}
 
 	config = _config.LoadConfig()

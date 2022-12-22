@@ -1,0 +1,22 @@
+{
+    "redis": {
+		"address": "localhost:6379",
+		"db": 2,
+		"dial_timeout": 5,
+		"expiration_time": 3600,
+		"read_timeout": 3,
+		"write_timeout": 3,
+		"pool_size": 10,
+		"pool_timeout": 4,
+		"idle_timeout": 300
+	},
+    "mongo" : {
+        "uri" : "mongodb://localhost:27017"
+    },
+    "mysql": {
+        "dsn": "user:pass@tcp(localhost:3306)/myDB?parseTime=true",
+        "max_open_connections": 20,
+        "max_idle_connections": 3,
+        "max_lifetime_connections": 5
+  }
+}
