@@ -3,11 +3,10 @@ TEST_OPTS := -covermode=atomic $(TEST_OPTS)
 
 # Database
 MYSQL_ADDRESS ?= localhost:3306
-MYSQL_USER ?= kurio
-MYSQL_PASSWORD ?= supersecret
+MYSQL_USER ?= user
+MYSQL_PASSWORD ?= pass
 MYSQL_DATABASE ?= myDB
 MIGRATION_STEP ?=
-MONGO_URI ?= mongodb://localhost:27017
 
 .PHONY: build
 build:
