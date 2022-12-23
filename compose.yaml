@@ -13,12 +13,13 @@ x-goboilerplate-common:
       - GITHUB_OAUTH=${GITHUB_OAUTH}
   env_file:
     - .env
-  volumes:
-    - &goboilerplate-volume-config
-      type: bind
-      source: ./config.json
-      target: /app/config.json
-      read_only: true
+  # uncomment below to use config.json, make sure to add "--config" to the command to use the config file.
+  # volumes:
+  #   - &goboilerplate-volume-config
+  #     type: bind
+  #     source: ./config.json
+  #     target: /app/config.json
+  #     read_only: true
   networks:
     &goboilerplate-network
     backend: {}
