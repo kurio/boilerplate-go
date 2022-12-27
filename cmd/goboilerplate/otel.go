@@ -32,6 +32,7 @@ func initOtel() {
 		resource.WithHost(),
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String(app),
+			semconv.ServiceVersionKey.String(gitCommit),
 		),
 	)
 	if err != nil {
